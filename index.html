@@ -429,6 +429,14 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
               </div>
               <span class="hint" id="modeHint"></span>
             </div>
+            <div class="field" id="payKindF">
+              <span class="lbl">Sur ma fiche, l'ancienneté est</span>
+              <div class="seg" id="segPayKind" role="group" aria-label="Place de l'ancienneté sur la fiche de paie">
+                <button type="button" data-v="base">Sur une ligne à part</button>
+                <button type="button" data-v="compose">Comprise dans le taux</button>
+              </div>
+              <span class="hint" id="payKindHint"></span>
+            </div>
           </div>
           <div class="list" id="payList" style="margin-top:8px"></div>
           <button type="button" class="btn primary" id="addPay" style="margin-top:12px">+ Ajouter une fiche de paie</button>
@@ -530,6 +538,10 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
             </div>
             <span class="hint" id="senModeHint"></span>
           </div>
+          <div class="field" id="senBaseF" style="margin-bottom:8px"><label for="senBase">Base de calcul de la prime</label>
+            <div class="inp sm"><input id="senBase" type="text" inputmode="decimal" autocomplete="off"><span>% du salaire de base</span></div>
+            <span class="hint">Laisse 100 si la prime est calculée sur ton salaire de base. Si elle est calculée sur un montant plus bas (minimum de la grille), saisis : prime d'ancienneté ÷ (taux d'ancienneté × salaire de base). Exemple : 190 ÷ (10 % × 2 000) = 95.</span>
+          </div>
           <div class="list" id="senList"></div>
           <div class="row" style="margin-top:12px;align-items:center">
             <button type="button" class="btn primary" id="addSen" style="flex:0 0 auto">+ Ajouter un palier</button>
@@ -622,7 +634,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     base:'brut', val:2800, mois:12, aug:3, augMode:'pct', statut:'noncadre', charges:22, tax:5, quot:100, per:'m', sc:[2,3,5,10],
     t:{example:true, start:'2015-01', startVal:1800, startBase:'brut', entry:'2015-01', end:NOW.getFullYear()+8, view:'brut', mode:'calc',
        raises:[{d:'2016-04',type:'pct',v:3,note:'Objectifs atteints'},{d:'2019-03',type:'eur',v:80,note:''},{d:'2022-04',type:'pct',v:4,note:'Nouvelles responsabilités'},{d:'2025-03',type:'pct',v:2.5,note:''}]},
-    g:{senior:[{y:4,p:4},{y:6,p:2},{y:8,p:2},{y:10,p:2},{y:12,p:2},{y:15,p:3},{y:17,p:2},{y:20,p:2}], seniorMode:'compose', primeOn:true, primePct:50, smic:smicDef(), pays:[], infl:inflDef(), inflFuture:2, hours:151.67},
+    g:{senior:[{y:4,p:4},{y:6,p:2},{y:8,p:2},{y:10,p:2},{y:12,p:2},{y:15,p:3},{y:17,p:2},{y:20,p:2}], seniorMode:'compose', primeOn:true, primePct:50, smic:smicDef(), pays:[], infl:inflDef(), inflFuture:2, hours:151.67, senBase:100},
     updatedAt:0
   };}
   var RATES = {noncadre:22, cadre:25, 'public':15};
@@ -719,9 +731,10 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
       S.g.pays.forEach(function(p){ var k=toN(p.d), v=payBrut(p); if(k===null||!(v>0)||k<n0||k>n1) return; payAt[k]=v; lastPay=Math.max(lastPay,k); });
       if(lastPay<0) fich=false; else if(payAt[n0]) base=payAt[n0];
     }
+    var kS = S.g.senBase>0 ? S.g.senBase/100 : 1;
     var fichBase = fich && S.g.seniorMode==='base', senAt = {};
     if(fichBase){
-      S.g.senior.forEach(function(s){ if(!(s.y>0)||!s.p) return; var k=entry+Math.round(s.y*12); if(k<=n0) senPct+=s.p; else if(k<=n1){ (senAt[k]=senAt[k]||[]).push(s); } });
+      S.g.senior.forEach(function(s){ if(!(s.y>0)||!s.p) return; var k=entry+Math.round(s.y*12); if(k<=n0) senPct+=s.p*kS; else if(k<=n1){ (senAt[k]=senAt[k]||[]).push(s); } });
     }
     ev.push({n:n0, kind:'start', label:'', after:base*(1+senPct/100)});
     for(var n=n0;n<=n1;n++){
@@ -738,8 +751,8 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
           ev.push({n:n, kind:'ind', label:lb, note:e.r.note||'', before:b1, after:base*(1+senPct/100)});
         });
         if(senAt[n]) senAt[n].forEach(function(st){
-          var b2 = base*(1+senPct/100); senPct += st.p;
-          ev.push({n:n, kind:'sen', label:'+'+nf1.format(st.p)+' pt', note:nf1.format(st.y)+' ans d\'ancienneté, prime portée à '+nf1.format(senPct)+' % du salaire de base', before:b2, after:base*(1+senPct/100)});
+          var b2 = base*(1+senPct/100); senPct += st.p*kS;
+          ev.push({n:n, kind:'sen', label:'+'+nf1.format(st.p)+' pt', note:nf1.format(st.y)+' ans d\'ancienneté, prime portée à '+nf1.format(Math.round(senPct/kS*10)/10)+' %'+(kS!==1?' sur '+nf1.format(S.g.senBase)+' % du salaire de base':' du salaire de base'), before:b2, after:base*(1+senPct/100)});
         });
       } else {
       var list = (fich && n<=lastPay) ? null : byMonth[n];
@@ -765,7 +778,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
           if(e.kind==='ind'){
             if(e.r.type==='eur'){ base += e.r.v; label = signed(e.r.v)+' brut'; } else { base *= 1+e.r.v/100; label = spct(e.r.v); }
           } else {
-            if(S.g.seniorMode==='base') senPct += e.s.p; else base *= 1+e.s.p/100;
+            if(S.g.seniorMode==='base') senPct += e.s.p*(S.g.senBase>0?S.g.senBase/100:1); else base *= 1+e.s.p/100;
             label = spct(e.s.p);
           }
           var after = base*(1+senPct/100);
@@ -866,6 +879,8 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
       : (TL.fichBase ? 'Tes fiches donnent le salaire de base hors ancienneté : l\'outil ajoute la prime d\'ancienneté par-dessus, aux dates anniversaires. Si l\'ancienneté est déjà comprise dans ton taux, change le mode d\'ancienneté dans Réglages.'
       : TL.fich ? 'Le montant de chaque fiche est pris comme le salaire complet, ancienneté comprise : l\'outil n\'ajoute rien par-dessus. Si ta prime d\'ancienneté est sur une ligne à part, choisis « Prime en % du salaire de base » dans Réglages.' : 'Ajoute au moins une fiche de paie postérieure à la date de départ pour que la courbe la suive.');
     $('raisesHint').textContent = TL.fich ? 'En mode fiches de paie, seules les augmentations datées après ta dernière fiche ('+fmtM(TL.lastPay)+') sont prises en compte.' : 'Celles obtenues avec ton responsable (objectifs, promotion, négociation).';
+    setSeg('segPayKind', S.g.seniorMode); $('payKindF').hidden = S.t.mode!=='fiches';
+    $('payKindHint').textContent = S.g.seniorMode==='base' ? 'L\'outil ajoute la prime d\'ancienneté par-dessus le taux de chaque fiche (' + nf1.format(Math.round(TL.senNow*10)/10) + ' % du salaire de base en fin de période).' : 'L\'outil n\'ajoute rien : le montant de chaque fiche est pris comme le salaire complet.';
     $('kIndL').textContent = TL.fich ? 'Gagné hors ancienneté' : 'Gagné en individuel';
     $('payCard').hidden = TL.fich;
     S.g.pays.forEach(function(p,i){ var e = document.getElementById('payEq'+i); if(e) e.textContent = p.v>0 ? (p.u==='h' ? '= ' + eur(payBrut(p)) + ' brut par mois' + (TL.fichBase ? ' hors ancienneté' : '') : '= ' + nf4.format(Math.round(p.v/hours()*1000)/1000) + ' € de l\'heure') : ''; }); setVal('tStart', S.t.start); setVal('tEntry', S.t.entry); setVal('tEnd', String(S.t.end));
@@ -1087,6 +1102,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   }
   function renderSet(){
     setSeg('segSenMode', S.g.seniorMode); setSeg('segPrime', S.g.primeOn?1:0);
+    setVal('senBase', fmtIn(S.g.senBase)); $('senBaseF').hidden = S.g.seniorMode!=='base';
     setVal('primePct', fmtIn(S.g.primePct)); setVal('inflFuture', fmtIn(S.g.inflFuture));
     $('senModeHint').textContent = S.g.seniorMode==='base'
       ? 'Les pourcentages s\'additionnent et forment une prime calculée sur le salaire de base (hors ancienneté).'
@@ -1157,6 +1173,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   onInput('tEntry', function(v,raw){ S.t.entry = raw; touchT(); });
   onInput('tEnd', function(v){ if(v>=1950 && v<=2100) S.t.end = Math.round(v); touchT(); });
   onSeg('segTBase', function(v){ if(v===S.t.startBase) return; var b = startBrut(); S.t.startBase=v; S.t.startVal = v==='net' ? Math.round(b*fac('net')*100)/100 : (v==='heure' ? Math.round(b/hours()*1000)/1000 : Math.round(b*100)/100); touchT(); });
+  onSeg('segPayKind', function(v){ S.g.seniorMode = v; touchT(); });
   onSeg('segMode', function(v){ S.t.mode = v; touchT(); });
   onInput('hours', function(v){ if(v>0 && v<400) S.g.hours = v; });
   onSeg('segView', function(v){ S.t.view = v; });
@@ -1170,6 +1187,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   onList('senList', function(){return S.g.senior;}, buildSenior);
   $('addSen').addEventListener('click', function(){ var mx=0; S.g.senior.forEach(function(s){mx=Math.max(mx,s.y);}); S.g.senior.push({y:mx+2,p:2}); buildSenior(); changed(); });
   onSeg('segSenMode', function(v){ S.g.seniorMode = v; });
+  onInput('senBase', function(v){ if(v>0 && v<=200) S.g.senBase = v; });
   onSeg('segPrime', function(v){ S.g.primeOn = v==='1'; });
   onInput('primePct', function(v){ S.g.primePct = clamp(v,0,500); });
   onList('smicList', function(){return S.g.smic;}, buildSmic);
