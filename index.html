@@ -178,6 +178,19 @@ details ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;
 .askhead p{margin:0;font-size:.92rem;color:var(--muted)}
 .ask .hint b{color:var(--ink)}
 @media (max-width:820px){.askgrid{grid-template-columns:minmax(0,1fr)}}
+/* Graphique agrandi */
+#zoom{position:fixed;inset:0;z-index:50;background:var(--bg);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.zoomhead{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.zoomhead strong{font-family:var(--font-display);font-size:1.05rem}
+#zoomChart{flex:1;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+#zoom .readout{min-height:0;margin:0}
+/* Bilan */
+#biHead{font-family:var(--font-display);font-weight:700;font-size:1.12rem;line-height:1.25;margin:0 0 6px;text-wrap:balance}
+.birow{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.birow .tag{flex:0 0 108px;text-align:center;white-space:normal;padding:5px 6px}
+.birow b{display:block;font-size:.95rem}
+.birow small{display:block;color:var(--muted);font-size:.86rem;margin-top:2px}
+.tbl td small{display:block;font-weight:400;color:var(--muted);font-size:.74rem;white-space:normal}
 /* Évolution */
 .banner{background:var(--tax-soft);color:var(--tax);border-radius:14px;padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:18px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -189,9 +202,9 @@ details ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;
 .tile.main small,.tile.main span{color:rgba(255,255,255,.85)}
 .readout{font-size:.86rem;color:var(--muted);min-height:2.6em;margin-bottom:6px}
 .readout b{color:var(--ink);font-variant-numeric:tabular-nums}
-#chart{width:100%;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-#chart svg{display:block;width:100%;height:auto}
-#chart text{font-family:var(--font-body);font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.chartbox{width:100%;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.chartbox svg{display:block;width:100%;height:auto}
+.chartbox text{font-family:var(--font-body);font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
 .tag{display:inline-block;border-radius:8px;padding:3px 8px;font-size:.78rem;font-weight:700;white-space:nowrap}
 .tag.ind{background:var(--accent-soft);color:var(--accent)}
 .tag.sen{background:var(--senior-soft);color:var(--senior)}
@@ -476,9 +489,15 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
         </section>
 
         <section class="card">
-          <h2>Mon salaire face au SMIC et à l'inflation</h2>
+          <h2>Bilan depuis le départ</h2>
+          <p id="biHead"></p>
+          <div id="biBody"></div>
+        </section>
+
+        <section class="card">
+          <div class="herotop" style="margin-bottom:10px"><h2 style="margin:0">Mon salaire face au SMIC et à l'inflation</h2><button type="button" class="btn" id="zoomOpen">Agrandir</button></div>
           <div class="readout num" id="readout"></div>
-          <div id="chart" role="img" aria-label="Courbes du salaire mensuel, du SMIC et de l'inflation dans le temps"></div>
+          <div id="chart" class="chartbox" role="img" aria-label="Courbes du salaire mensuel, du SMIC et de l'inflation dans le temps"></div>
           <div class="legend" style="margin-top:10px">
             <span><i class="dot" style="background:var(--accent)"></i>Mon salaire</span>
             <span><i class="dot" style="background:var(--muted)"></i>SMIC</span>
@@ -623,6 +642,19 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   </div>
 </div>
 
+<div id="zoom" hidden>
+  <div class="zoomhead"><strong>Mon salaire face au SMIC et à l'inflation</strong><button type="button" class="btn" id="zoomClose">Fermer</button></div>
+  <div class="readout num" id="zoomRo"></div>
+  <div id="zoomChart" class="chartbox"></div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--accent)"></i>Mon salaire</span>
+    <span><i class="dot" style="background:var(--muted)"></i>SMIC</span>
+    <span><i class="dot" style="background:var(--tax)"></i>Départ indexé sur l'inflation</span>
+    <span><i class="dot r" style="background:var(--accent)"></i>Hausse</span>
+    <span><i class="dot r" style="background:var(--senior)"></i>Ancienneté</span>
+    <span>Pointillés : projection</span>
+  </div>
+</div>
 <script>
 (function(){
   var SMIC_DEF = [['2008-07',1321.02],['2009-07',1337.70],['2010-01',1343.77],['2011-01',1365.00],['2011-12',1393.82],['2012-01',1398.37],['2012-07',1425.67],['2013-01',1430.22],['2014-01',1445.38],['2015-01',1457.52],['2016-01',1466.62],['2017-01',1480.27],['2018-01',1498.47],['2019-01',1521.22],['2020-01',1539.42],['2021-01',1554.58],['2021-10',1589.47],['2022-01',1603.12],['2022-05',1645.58],['2022-08',1678.95],['2023-01',1709.28],['2023-05',1747.20],['2024-01',1766.92],['2024-11',1801.80],['2026-01',1823.03],['2026-06',1867.02]];
@@ -719,7 +751,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     var endY = clamp(Math.round(S.t.end)||NOW.getFullYear(), Math.floor(n0/12), Math.floor(n0/12)+60);
     var n1 = endY*12+11;
     var base = startBrut();
-    var senPct = 0, ev = [], brut=[], smic=[], px=[], i;
+    var senPct = 0, ev = [], brut=[], smic=[], px=[], baseAt=[], i;
     var inflBy = {}, inflMax = -1;
     S.g.infl.forEach(function(r){ var yy=Math.round(r.y); if(yy>1900){ inflBy[yy]=r.p; inflMax=Math.max(inflMax,yy); } });
     function rate(yy){ return inflBy[yy]!==undefined ? inflBy[yy] : (yy>inflMax ? S.g.inflFuture : 0); }
@@ -786,11 +818,11 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
         }
       }
       }
-      brut.push(base*(1+senPct/100));
+      brut.push(base*(1+senPct/100)); baseAt.push(base);
       smic.push(smicAt(n));
       px.push(n===n0 ? 1 : px[px.length-1]*Math.pow(1+rate(Math.floor(n/12))/100, 1/12));
     }
-    return {fich:fich, fichBase:fichBase, senNow:senPct, lastPay:lastPay, n0:n0, n1:n1, entry:entry, brut:brut, smic:smic, px:px, ev:ev, iT:clamp(NOW_N-n0,0,n1-n0)};
+    return {baseAt:baseAt, fich:fich, fichBase:fichBase, senNow:senPct, lastPay:lastPay, n0:n0, n1:n1, entry:entry, brut:brut, smic:smic, px:px, ev:ev, iT:clamp(NOW_N-n0,0,n1-n0)};
   }
 
   // ---------- Rendu ----------
@@ -907,10 +939,25 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
 
     // Chronologie
     var h='';
+    var prevE = null;
     TL.ev.forEach(function(e){
-      var fut = e.n-TL.n0>iT;
+      var fut = e.n-TL.n0>iT, k = clamp(e.n-TL.n0,0,last);
       var tag = e.kind==='start' ? '<span class="tag start">Départ</span>' : (e.kind==='ind' ? '<span class="tag ind">'+esc(e.tag||'Individuelle')+'</span>' : '<span class="tag sen">Ancienneté</span>');
-      h += '<tr'+(fut?' class="future"':'')+'><td class="k">'+fmtM(e.n)+(fut?'<small>à venir</small>':'')+'</td><td class="l">'+tag+(e.note?'<small style="display:block;color:var(--muted);font-size:.76rem;white-space:normal">'+esc(e.note)+'</small>':'')+'</td><td>'+(e.kind==='start'?'–':esc(e.label))+'</td><td class="after">'+eur(e.after*f)+'</td></tr>';
+      var dSub = fut ? 'à venir' : '', hSub = '', sSub = [];
+      if(e.kind!=='start'){
+        var gap = prevE ? e.n-prevE.n : 0;
+        if(gap>0){
+          var gy = Math.floor(gap/12), gm = gap%12;
+          dSub = (fut?'à venir · ':'') + (gy?gy+(gy>1?' ans':' an'):'') + (gy&&gm?' ':'') + (gm?gm+' mois':'') + ' après';
+          var pk = clamp(prevE.n-TL.n0,0,last), infB = (TL.px[k]/TL.px[pk]-1)*100, up = e.before>0 ? (e.after/e.before-1)*100 : 0;
+          hSub = signed((e.after-e.before)*f)+' par mois<br>prix '+spct(infB)+' entre-temps'+(up>=infB?'':' : hausse inférieure');
+        } else hSub = signed((e.after-e.before)*f)+' par mois';
+        if(e.kind==='sen' && e.before>0) hSub = 'soit '+spct((e.after/e.before-1)*100)+' · '+hSub;
+        sSub.push(spct((e.after/start-1)*100)+' depuis le départ');
+      }
+      if(TL.smic[k]) sSub.push(nf2.format(e.after/TL.smic[k])+' × le SMIC');
+      h += '<tr'+(fut?' class="future"':'')+'><td class="k">'+fmtM(e.n)+(dSub?'<small>'+dSub+'</small>':'')+'</td><td class="l">'+tag+(e.note?'<small>'+esc(e.note)+'</small>':'')+'</td><td>'+(e.kind==='start'?'–':esc(e.label)+'<small>'+hSub+'</small>')+'</td><td class="after">'+eur(e.after*f)+(sSub.length?'<small>'+sSub.join('<br>')+'</small>':'')+'</td></tr>';
+      prevE = e;
     });
     $('evBody').innerHTML = h;
 
@@ -963,9 +1010,27 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
         askRow('Suivre les prix', Math.max(0,infl), 'inflation de '+spct(infl*100)+' depuis '+fmtM(ref.n))
       + askRow('Garder ton avance sur le SMIC', smUp===null?null:Math.max(0,smUp), smUp===null?'SMIC inconnu sur la période':'SMIC '+spct(smUp*100)+' depuis '+fmtM(ref.n))
       + askRow('Prendre un an d\'avance', ahead, 'rattrapage + '+nf1.format(S.g.inflFuture)+' % d\'inflation supposée sur les 12 prochains mois');
-    $('askNote').innerHTML = 'Depuis ton départ : salaire <b>'+spct(evo)+'</b>, prix <b>'+spct((TL.px[iT]-1)*100)+'</b>. '
-      + (realEvo>=0 ? 'Ton pouvoir d\'achat a progressé de <b>'+spct(realEvo*100)+'</b>.' : 'Ton pouvoir d\'achat a reculé de <b>'+spct(realEvo*100)+'</b> : il faudrait <b>+'+p1(1/(1+realEvo)-1)+' %</b> pour revenir au niveau de départ.')
-      + ' Une demande au-dessus du minimum est une vraie augmentation ; en dessous, tu perds du pouvoir d\'achat.';
+    $('askNote').textContent = 'Une demande au-dessus du minimum est une vraie augmentation ; en dessous, tu perds du pouvoir d\'achat.';
+
+    // Bilan
+    var pxUp = TL.px[iT]-1, real = start>0 ? (1+evo/100)/(1+pxUp)-1 : 0, yrs = iT/12;
+    var r0 = sStart ? start/sStart : null, r1 = sNow ? now/sNow : null;
+    var sReal = real>0.01 ? 1 : (real<-0.01 ? -1 : 0), sSm = (r0===null||r1===null) ? 0 : (r1>r0+0.02 ? 1 : (r1<r0-0.02 ? -1 : 0));
+    var tagOf = function(sc, a, b, c){ return '<span class="tag '+(sc>0?'ok':(sc<0?'gap':'start'))+'">'+(sc>0?a:(sc<0?b:c))+'</span>'; };
+    var bi = '';
+    bi += '<div class="birow">'+tagOf(sReal,'Gagné','Perdu','Stable')+'<div><b>Face aux prix</b><small>Ton salaire a pris '+spct(evo)+', les prix '+spct(pxUp*100)+'. Ton pouvoir d\'achat a '+(real>=0?'progressé':'reculé')+' de '+spct(real*100)+', soit '+signed((now-start*TL.px[iT])*f)+' par mois en euros d\'aujourd\'hui ('+viewName()+').</small></div></div>';
+    if(r0!==null && r1!==null) bi += '<div class="birow">'+tagOf(sSm,'Écart creusé','Le SMIC te rattrape','Écart stable')+'<div><b>Face au SMIC</b><small>Tu gagnais '+nf2.format(r0)+' fois le SMIC au départ, '+nf2.format(r1)+' fois aujourd\'hui. Le SMIC a pris '+spct((sNow/sStart-1)*100)+' sur la période, toi '+spct(evo)+'.</small></div></div>';
+    if(gs>0.5 && start>0){
+      var evoNS = ((now-gs)/start-1)*100, realNS = (1+evoNS/100)/(1+pxUp)-1, sNS = realNS>0.01 ? 1 : (realNS<-0.01 ? -1 : 0);
+      bi += '<div class="birow">'+tagOf(sNS,'Suffisant','Insuffisant','Tout juste')+'<div><b>Sans l\'ancienneté</b><small>Hors ancienneté, ton salaire a pris '+spct(evoNS)+' pour des prix à '+spct(pxUp*100)+'. '+(sNS<0 ? 'Les hausses de ton taux n\'ont pas suivi l\'inflation'+(sReal>=0?' : c\'est l\'ancienneté qui maintient ton pouvoir d\'achat.':'.') : 'Les hausses de ton taux ont suffi à suivre l\'inflation ; l\'ancienneté vient en plus.')+'</small></div></div>';
+    }
+    if(yrs>=1 && start>0) bi += '<div class="birow"><span class="tag start">Rythme</span><div><b>En moyenne par an</b><small>'+spct((Math.pow(1+evo/100,1/yrs)-1)*100)+' de salaire par an sur '+nf1.format(Math.round(yrs*10)/10)+' ans, pour une inflation moyenne de '+spct((Math.pow(1+pxUp,1/yrs)-1)*100)+' par an.</small></div></div>';
+    $('biBody').innerHTML = bi;
+    var pos = (sReal>0)+(sSm>0), neg = (sReal<0)+(sSm<0);
+    $('biHead').textContent = pos && !neg ? 'Bilan positif : ton salaire a progressé plus vite que '+(sReal>0&&sSm>0?'les prix et le SMIC':(sReal>0?'les prix':'le SMIC'))+'.'
+      : neg && !pos ? 'Bilan négatif : ton salaire a progressé moins vite que '+(sReal<0&&sSm<0?'les prix et le SMIC':(sReal<0?'les prix':'le SMIC'))+'.'
+      : pos && neg ? (sReal>0 ? 'Bilan mitigé : tu as gagné du pouvoir d\'achat, mais le SMIC a progressé plus vite que toi.' : 'Bilan mitigé : tu as creusé l\'écart avec le SMIC, mais perdu du pouvoir d\'achat.')
+      : 'Bilan neutre : ton salaire a suivi les prix et le SMIC, sans gain ni perte notable.';
 
     // Résumé ancienneté
     var parts = S.g.senior.filter(function(s){return s.y>0&&s.p;}).slice().sort(function(a,b){return a.y-b.y;}).map(function(s){ return '+'+nf1.format(s.p)+' % à '+nf1.format(s.y)+' ans'; });
@@ -976,9 +1041,9 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
 
   function niceStep(raw){ var p = Math.pow(10, Math.floor(Math.log(raw)/Math.LN10)), c=[1,2,2.5,5,10]; for(var i=0;i<c.length;i++) if(c[i]*p>=raw) return c[i]*p; return 10*p; }
 
-  function drawChart(){
-    var el = $('chart'); if(!TL || !el.clientWidth) return;
-    var W = Math.max(280, el.clientWidth), H = W<520 ? 250 : 320, pad = {l:48,r:10,t:12,b:26};
+  function renderChart(el, ro, big){
+    if(!TL || !el.clientWidth) return;
+    var W = Math.max(280, el.clientWidth), H = big ? Math.max(240, el.clientHeight||420) : (W<520 ? 300 : 380), pad = {l:48,r:big?18:10,t:big?26:14,b:26};
     var f = fac(S.t.view), N = TL.brut.length, iT = TL.iT, i;
     var sal = TL.brut.map(function(v){return v*f;}), smic = TL.smic.map(function(v){return v===null?null:v*f;});
     var inf = TL.px.map(function(v){return TL.brut[0]*v*f;});
@@ -986,70 +1051,83 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     for(i=0;i<N;i++){ mn=Math.min(mn,sal[i],inf[i]); mx=Math.max(mx,sal[i],inf[i]); if(smic[i]!==null){ mn=Math.min(mn,smic[i]); mx=Math.max(mx,smic[i]); } }
     (TL.pays||[]).forEach(function(p){ var k=p.n-TL.n0; if(k>=0&&k<N){ mn=Math.min(mn,p.v*f); mx=Math.max(mx,p.v*f); } });
     if(!isFinite(mn)){ mn=0; mx=1; } if(mx-mn<1){ mx=mn+100; }
-    var step = niceStep((mx-mn)/4), lo = Math.floor(mn/step)*step, hi = Math.ceil(mx/step)*step;
+    var step = niceStep((mx-mn)/(big?8:5)), lo = Math.floor(mn/step)*step, hi = Math.ceil(mx/step)*step;
     var X = function(i){ return pad.l + i/N*(W-pad.l-pad.r); };
     var Y = function(v){ return pad.t + (1-(v-lo)/(hi-lo))*(H-pad.t-pad.b); };
-    function steps(arr, a, b){ // ligne en escalier des mois a..b inclus
+    function steps(arr, a, b){
       while(a<=b && arr[a]===null) a++;
       if(a>b) return '';
       var d = 'M'+X(a).toFixed(1)+' '+Y(arr[a]).toFixed(1);
       for(var k=a+1;k<=b;k++){ d += 'H'+X(k).toFixed(1); if(arr[k]!==arr[k-1]) d += 'V'+Y(arr[k]).toFixed(1); }
       return d + 'H'+X(b+1).toFixed(1);
     }
+    function curve(arr,a,b){ var d=''; for(var k=a;k<=b;k++) d += (k===a?'M':'L')+X(k+0.5).toFixed(1)+' '+Y(arr[k]).toFixed(1); return d; }
     var s = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
     for(var v=lo; v<=hi+step/2; v+=step){
       s += '<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'" stroke="var(--line)" stroke-width="1"/>';
       s += '<text x="'+(pad.l-6)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end">'+nf0.format(v)+'</text>';
     }
-    var y0 = Math.ceil(TL.n0/12), y1 = Math.floor(TL.n1/12), ys = Math.max(1, Math.ceil((y1-y0+1)/Math.max(2,Math.floor((W-pad.l)/52))));
+    var y0 = Math.ceil(TL.n0/12), y1 = Math.floor(TL.n1/12), ys = Math.max(1, Math.ceil((y1-y0+1)/Math.max(2,Math.floor((W-pad.l)/(big?46:52)))));
     for(var y=y0;y<=y1;y+=ys){
       var xi = X(y*12-TL.n0);
-      s += '<line x1="'+xi.toFixed(1)+'" x2="'+xi.toFixed(1)+'" y1="'+(H-pad.b)+'" y2="'+(H-pad.b+4)+'" stroke="var(--line)"/>';
+      s += '<line x1="'+xi.toFixed(1)+'" x2="'+xi.toFixed(1)+'" y1="'+pad.t+'" y2="'+(H-pad.b+4)+'" stroke="var(--line)" stroke-width="1" opacity=".55"/>';
       s += '<text x="'+xi.toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(xi>W-30?'end':(xi<pad.l+14?'start':'middle'))+'">'+y+'</text>';
     }
     var pastSal = steps(sal,0,iT);
     if(pastSal) s += '<path d="'+pastSal+'V'+(H-pad.b)+'H'+X(0).toFixed(1)+'Z" fill="var(--accent)" opacity=".1"/>';
-    function curve(arr,a,b){ var d=''; for(var k=a;k<=b;k++) d += (k===a?'M':'L')+X(k+0.5).toFixed(1)+' '+Y(arr[k]).toFixed(1); return d; }
-    s += '<path d="'+curve(inf,0,iT)+'" fill="none" stroke="var(--tax)" stroke-width="2" stroke-linejoin="round"/>';
+    s += '<path d="'+curve(inf,0,iT)+'" fill="none" stroke="var(--tax)" stroke-width="2.5" stroke-linejoin="round"/>';
     if(iT<N-1) s += '<path d="'+curve(inf,iT,N-1)+'" fill="none" stroke="var(--tax)" stroke-width="2" stroke-dasharray="3 5" opacity=".8"/>';
-    s += '<path d="'+steps(smic,0,iT)+'" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round"/>';
+    s += '<path d="'+steps(smic,0,iT)+'" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linejoin="round"/>';
     if(iT<N-1){
       s += '<path d="'+steps(smic,iT+1,N-1)+'" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="3 5" opacity=".7"/>';
       s += '<path d="M'+X(iT+1).toFixed(1)+' '+Y(sal[iT]).toFixed(1)+'V'+Y(sal[iT+1]).toFixed(1)+steps(sal,iT+1,N-1).replace(/^M[^HV]*/,'')+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" stroke-linejoin="round"/>';
     }
-    s += '<path d="'+pastSal+'" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>';
+    s += '<path d="'+pastSal+'" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round"/>';
     if(NOW_N>=TL.n0 && NOW_N<=TL.n1 && iT<N-1){
       var xt = X(iT+0.5);
       s += '<line x1="'+xt.toFixed(1)+'" x2="'+xt.toFixed(1)+'" y1="'+pad.t+'" y2="'+(H-pad.b)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity=".5"/>';
       s += '<text x="'+(xt+5).toFixed(1)+'" y="'+(H-pad.b-6)+'" style="fill:var(--ink);font-weight:600">Aujourd\'hui</text>';
     }
+    var lastLx = -99;
     TL.ev.forEach(function(e){
       if(e.kind==='start') return;
       var fut = e.n-TL.n0>iT, col = e.kind==='ind' ? 'var(--accent)' : 'var(--senior)';
-      s += '<circle cx="'+X(e.n-TL.n0).toFixed(1)+'" cy="'+Y(e.after*f).toFixed(1)+'" r="4.5" fill="'+(fut?'var(--surface)':col)+'" stroke="'+col+'" stroke-width="2"/>';
+      var cx = X(e.n-TL.n0), cy = Y(e.after*f);
+      s += '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(big?5.5:4.5)+'" fill="'+(fut?'var(--surface)':col)+'" stroke="'+col+'" stroke-width="2"/>';
+      if(big && cx-lastLx > 44 && e.before>0){
+        lastLx = cx;
+        s += '<text x="'+cx.toFixed(1)+'" y="'+(cy-10).toFixed(1)+'" text-anchor="'+(cx>W-40?'end':'middle')+'" style="fill:'+col+';font-weight:700">'+spct((e.after/e.before-1)*100).replace(' %',' %')+'</text>';
+      }
     });
     (TL.pays||[]).forEach(function(p){
       var k=p.n-TL.n0; if(k<0||k>=N) return;
-      var cx=X(k+0.5), cy=Y(p.v*f);
+      var cx=X(k+0.5), cy=Y(p.v*f*(TL.fichBase?TL.brut[k]/(TL.baseAt?TL.baseAt[k]:TL.brut[k]):1));
       s += '<rect x="'+(cx-4.5).toFixed(1)+'" y="'+(cy-4.5).toFixed(1)+'" width="9" height="9" transform="rotate(45 '+cx.toFixed(1)+' '+cy.toFixed(1)+')" fill="var(--ink)" stroke="var(--surface)" stroke-width="1.5"/>';
     });
-    s += '<line id="cur" x1="0" x2="0" y1="'+pad.t+'" y2="'+(H-pad.b)+'" stroke="var(--ink)" stroke-width="1" opacity="0"/></svg>';
+    if(big){
+      var ends = [[sal[iT],'var(--accent)','Salaire'],[inf[iT],'var(--tax)','Prix']]; if(smic[iT]!==null) ends.push([smic[iT],'var(--muted)','SMIC']);
+      ends.sort(function(a,b){return b[0]-a[0];});
+      var ly = -99; ends.forEach(function(d){ var yy = Math.max(Y(d[0])-8, ly+14); ly = yy; s += '<text x="'+(pad.l+8)+'" y="'+(pad.t+12+(ends.indexOf(d))*15)+'" style="fill:'+d[1]+';font-weight:700;font-size:12px">'+d[2]+' aujourd\'hui : '+eur(d[0])+'</text>'; });
+    }
+    s += '<line class="cur" x1="0" x2="0" y1="'+pad.t+'" y2="'+(H-pad.b)+'" stroke="var(--ink)" stroke-width="1" opacity="0"/></svg>';
     el.innerHTML = s;
-    CH = {X:X, N:N, sal:sal, smic:smic, inf:inf, pad:pad, W:W};
-    readout(iT, false);
+    el._ch = {X:X, N:N, sal:sal, smic:smic, inf:inf, pad:pad, W:W}; el._ro = ro;
+    readout(el, iT, false);
   }
-  function readout(i, showCur){
-    if(!CH) return;
+  function drawChart(){ renderChart($('chart'), $('readout'), false); if(!$('zoom').hidden) renderChart($('zoomChart'), $('zoomRo'), true); }
+  function readout(el, i, showCur){
+    var CH = el._ch; if(!CH || !el._ro) return;
     i = clamp(i,0,CH.N-1);
-    var sv = CH.sal[i], sm = CH.smic[i], fut = i>TL.iT;
-    $('readout').innerHTML = '<b>'+fmtM(TL.n0+i)+'</b>'+(fut?' (projection)':'')+' · salaire <b>'+eur(sv)+'</b>'+(sm!==null?' · SMIC <b>'+eur(sm)+'</b> · <b>'+nf2.format(sv/sm)+' ×</b> le SMIC':'')+' · départ indexé sur les prix <b>'+eur(CH.inf[i])+'</b><br>Montants mensuels en '+viewName()+'. Touche la courbe pour lire un autre mois.';
-    var c = document.getElementById('cur');
+    var sv = CH.sal[i], sm = CH.smic[i], fut = i>TL.iT, evs = [];
+    TL.ev.forEach(function(e){ if(e.kind!=='start' && e.n===TL.n0+i) evs.push((e.kind==='sen'?'ancienneté ':(e.tag?e.tag.toLowerCase()+' ':'augmentation '))+e.label); });
+    el._ro.innerHTML = '<b>'+fmtM(TL.n0+i)+'</b>'+(fut?' (projection)':'')+' · salaire <b>'+eur(sv)+'</b>'+(sm!==null?' · SMIC <b>'+eur(sm)+'</b> · <b>'+nf2.format(sv/sm)+' ×</b> le SMIC':'')+' · départ indexé sur les prix <b>'+eur(CH.inf[i])+'</b>'+(evs.length?' · <b>'+esc(evs.join(', '))+'</b>':'')+'<br>Montants mensuels en '+viewName()+'. Touche la courbe pour lire un autre mois.';
+    var c = el.querySelector('.cur');
     if(c){ var x = CH.X(i+0.5); c.setAttribute('x1',x); c.setAttribute('x2',x); c.setAttribute('opacity', showCur?'.35':'0'); }
   }
   function chartPoint(e){
-    if(!CH) return;
-    var r = $('chart').getBoundingClientRect(), x = (e.clientX-r.left)/r.width*CH.W;
-    readout(Math.floor((x-CH.pad.l)/(CH.W-CH.pad.l-CH.pad.r)*CH.N), true);
+    var el = e.currentTarget, CH = el && el._ch; if(!CH) return;
+    var r = el.getBoundingClientRect(), x = (e.clientX-r.left)/r.width*CH.W;
+    readout(el, Math.floor((x-CH.pad.l)/(CH.W-CH.pad.l-CH.pad.r)*CH.N), true);
   }
 
   // ---------- Listes éditables ----------
@@ -1224,9 +1302,15 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     catch(e){ $('restoreMsg').textContent='Ce texte n\'est pas une copie valide. Colle le texte complet obtenu avec « Copier mes données ».'; }
   });
 
-  var ch = $('chart');
-  ch.addEventListener('pointerdown', chartPoint); ch.addEventListener('pointermove', chartPoint);
-  ch.addEventListener('pointerleave', function(){ if(TL) readout(TL.iT,false); });
+  ['chart','zoomChart'].forEach(function(id){
+    var ch = $(id);
+    ch.addEventListener('pointerdown', chartPoint); ch.addEventListener('pointermove', chartPoint);
+    ch.addEventListener('pointerleave', function(){ if(TL) readout(ch, TL.iT, false); });
+  });
+  function zoom(on){ $('zoom').hidden = !on; document.body.style.overflow = on ? 'hidden' : ''; if(on) drawChart(); }
+  $('zoomOpen').addEventListener('click', function(){ zoom(true); });
+  $('zoomClose').addEventListener('click', function(){ zoom(false); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !$('zoom').hidden) zoom(false); });
   var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(drawChart,120); });
 
   // ---------- Onglets ----------
