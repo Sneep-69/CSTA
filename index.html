@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculateur d'augmentation de salaire</title>
+<meta name="description" content="Simuler une augmentation de salaire et suivre son évolution face au SMIC et à l'inflation. Les données restent sur l'appareil.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Salaire">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eef1ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+<style>
+/* Layout : trois onglets (simulateur, évolution, réglages) ; saisie à gauche, résultats à droite ; une colonne sur téléphone. */
+:root{
+  --bg:#eef1ec;
+  --surface:#ffffff;
+  --surface-2:#f5f7f3;
+  --ink:#14211c;
+  --muted:#5c6b64;
+  --line:#d9dfd8;
+  --accent:#0d7a5c;
+  --accent-ink:#ffffff;
+  --accent-soft:#dff2ea;
+  --tax:#b4571a;
+  --tax-soft:#fbeadb;
+  --senior:#2f5fc4;
+  --senior-soft:#e2eafb;
+  --hero-a:#0d7a5c;
+  --hero-b:#0a4f55;
+  --shadow:0 1px 2px rgba(20,33,28,.05),0 10px 30px -12px rgba(20,33,28,.18);
+  --font-display:ui-rounded,"SF Pro Rounded","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --radius:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1513; --surface:#16201d; --surface-2:#1c2825; --ink:#e9f0ec; --muted:#95a69e; --line:#2a3833;
+    --accent:#3fcf9f; --accent-ink:#06231a; --accent-soft:#17382e; --tax:#f0a164; --tax-soft:#3a2716;
+    --senior:#8fb0ff; --senior-soft:#1d2a47; --hero-a:#12684f; --hero-b:#0c3d44;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 34px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1513; --surface:#16201d; --surface-2:#1c2825; --ink:#e9f0ec; --muted:#95a69e; --line:#2a3833;
+  --accent:#3fcf9f; --accent-ink:#06231a; --accent-soft:#17382e; --tax:#f0a164; --tax-soft:#3a2716;
+  --senior:#8fb0ff; --senior-soft:#1d2a47; --hero-a:#12684f; --hero-b:#0c3d44;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 34px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 56px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;margin:8px 0 16px}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(1.7rem,5.5vw,2.6rem);line-height:1.02;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.top p{margin:0;color:var(--muted);font-size:.95rem;max-width:36ch}
+
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:18px;box-shadow:var(--shadow)}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);cursor:pointer;font:600 .92rem var(--font-body);padding:11px 8px;border-radius:12px;transition:background .15s,color .15s}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.panel[hidden]{display:none}
+
+.sticky{position:sticky;top:0;z-index:5;display:none;margin:0 -16px 14px;padding:10px 16px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);align-items:center;justify-content:space-between;gap:12px}
+.sticky small{display:block;color:var(--muted);font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.sticky strong{font-family:var(--font-display);font-size:1.3rem;font-weight:700}
+
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card h2{font-family:var(--font-display);font-weight:700;font-size:1.15rem;margin:0 0 14px;letter-spacing:-.01em}
+.card h2 + .lead{margin:-8px 0 14px}
+.lead,.hint{font-size:.82rem;color:var(--muted);font-weight:400}
+
+.fields{display:flex;flex-direction:column;gap:18px}
+.field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.field > label,.field > .lbl{font-size:.82rem;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > *{flex:1 1 130px;min-width:0}
+
+.inp{display:flex;align-items:center;background:var(--surface-2);border:1.5px solid var(--line);border-radius:14px;padding:0 14px;height:52px;transition:border-color .15s, box-shadow .15s;min-width:0}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.inp input,.inp select{flex:1;min-width:0;width:100%;border:0;background:transparent;outline:0;color:var(--ink);font:600 1.2rem var(--font-body);font-variant-numeric:tabular-nums;padding:0}
+.inp select{flex:0 0 auto;width:auto;font-size:.9rem;color:var(--muted);cursor:pointer}
+.inp span{color:var(--muted);font-weight:600;font-size:.9rem;white-space:nowrap;padding-left:8px}
+.inp.sm{height:44px}
+.inp.sm input{font-size:1rem}
+.inp.xs{height:40px;padding:0 10px;border-radius:11px}
+.inp.xs input{font-size:.95rem}
+.inp.xs span{font-size:.82rem;padding-left:4px}
+.sub{font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:4px;display:block}
+
+.seg{display:flex;background:var(--surface-2);border:1.5px solid var(--line);border-radius:14px;padding:4px;gap:4px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font:600 .88rem var(--font-body);padding:9px 10px;border-radius:10px;white-space:nowrap;transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.inp input:focus-visible,.inp select:focus-visible{outline:0}
+input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0;height:24px}
+input[type=range].tax{accent-color:var(--tax)}
+
+.hero{background:linear-gradient(140deg,var(--hero-a),var(--hero-b));color:#fff;border:0;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);pointer-events:none}
+.hero .eyebrow{font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.82}
+.hero .big{font-family:var(--font-display);font-weight:800;font-size:clamp(2.6rem,11vw,4rem);line-height:1;letter-spacing:-.03em;margin:8px 0 4px}
+.hero .big small{font-size:.32em;font-weight:500;letter-spacing:0;opacity:.85;margin-left:6px}
+.hero .line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.17);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.9rem}
+.pill.neg{background:rgba(255,190,150,.28)}
+.hero .was{opacity:.85;font-size:.9rem}
+.herotop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+.hero .seg{background:rgba(255,255,255,.14);border-color:transparent;padding:3px}
+.hero .seg button{color:rgba(255,255,255,.85);padding:6px 12px;font-size:.8rem}
+.hero .seg button[aria-pressed="true"]{background:#fff;color:#0a4f55}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th,.tbl td{padding:12px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-top:0}
+.tbl th:first-child,.tbl td:first-child{text-align:left;padding-left:0}
+.tbl td:last-child,.tbl th:last-child{padding-right:0}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td{font-variant-numeric:tabular-nums;font-weight:500}
+.tbl td.k{font-weight:600;white-space:normal}
+.tbl td.k small{display:block;font-weight:400;color:var(--muted);font-size:.76rem}
+.tbl .after{font-weight:700}
+.tbl td.l{text-align:left}
+.tbl tr.future td{color:var(--muted)}
+.tbl tr.future .after{font-weight:500}
+.gain{display:inline-block;background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:8px;padding:3px 8px;font-size:.9rem}
+.gain.neg{background:var(--tax-soft);color:var(--tax)}
+.tbl tr.final td{font-size:1.05rem}
+.tbl tr.taxrow td{color:var(--tax)}
+.tbl tr.taxrow td.k small{color:var(--tax);opacity:.8}
+.scroll{overflow-x:auto}
+
+.split{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--surface-2);margin:4px 0 10px}
+.split i{display:block;height:100%;transition:width .25s}
+.split .s-net{background:var(--accent)} .split .s-tax{background:var(--tax)} .split .s-ch{background:var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
+.legend b{color:var(--ink);font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}
+.dot.r{border-radius:50%}
+
+.sc td:first-child{width:92px}
+.sc .inp{height:38px;padding:0 10px;border-radius:10px}
+.sc .inp input{font-size:.95rem}
+.sc tr.cur td{background:var(--accent-soft)}
+.sc tr.cur td:first-child{border-radius:10px 0 0 10px;padding-left:6px}
+.sc tr.cur td:last-child{border-radius:0 10px 10px 0;padding-right:6px}
+.bar{height:5px;border-radius:99px;background:var(--accent);margin-top:5px;margin-left:auto;transition:width .25s;min-width:2px}
+
+details{font-size:.86rem;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;color:var(--ink);border-radius:6px}
+details ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.link{border:0;background:none;color:var(--muted);font:600 .82rem var(--font-body);cursor:pointer;text-decoration:underline;padding:4px 0;align-self:flex-start}
+.btn{border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);font:600 .9rem var(--font-body);cursor:pointer;border-radius:12px;padding:10px 14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.del{flex:0 0 40px !important;width:40px;height:40px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:10px;font-size:1.2rem;line-height:1}
+.del:hover{background:var(--tax-soft);color:var(--tax)}
+
+/* Encart augmentation à demander */
+.ask{border:2px solid var(--accent)}
+.askgrid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:20px;align-items:center}
+.ask .eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.askbig{font-family:var(--font-display);font-weight:800;font-size:clamp(2.2rem,9vw,3.4rem);line-height:1.05;letter-spacing:-.02em;margin:6px 0}
+.askhead p{margin:0;font-size:.92rem;color:var(--muted)}
+.ask .hint b{color:var(--ink)}
+@media (max-width:820px){.askgrid{grid-template-columns:minmax(0,1fr)}}
+/* Évolution */
+.banner{background:var(--tax-soft);color:var(--tax);border-radius:14px;padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:18px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{background:var(--surface-2);border-radius:14px;padding:12px 14px;min-width:0}
+.tile small{display:block;font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tile strong{display:block;font-family:var(--font-display);font-size:1.45rem;font-weight:700;line-height:1.15;margin-top:2px}
+.tile span{font-size:.8rem;color:var(--muted)}
+.tile.main{background:linear-gradient(140deg,var(--hero-a),var(--hero-b));color:#fff}
+.tile.main small,.tile.main span{color:rgba(255,255,255,.85)}
+.readout{font-size:.86rem;color:var(--muted);min-height:2.6em;margin-bottom:6px}
+.readout b{color:var(--ink);font-variant-numeric:tabular-nums}
+#chart{width:100%;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+#chart svg{display:block;width:100%;height:auto}
+#chart text{font-family:var(--font-body);font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.tag{display:inline-block;border-radius:8px;padding:3px 8px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.tag.ind{background:var(--accent-soft);color:var(--accent)}
+.tag.sen{background:var(--senior-soft);color:var(--senior)}
+.tag.ok{background:var(--accent-soft);color:var(--accent)}
+.tag.gap{background:var(--tax-soft);color:var(--tax)}
+.tag.start{background:var(--surface-2);color:var(--muted)}
+.erow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.erow:last-of-type{border-bottom:0}
+.erow .inp{flex:1 1 120px}
+.erow .eq{flex:1 1 100%;order:6}
+.erow .inp.note{flex:3 1 100%;order:5}
+.erow .inp.note input{font-weight:500;font-size:.9rem}
+.list{display:flex;flex-direction:column}
+.list.tall{max-height:420px;overflow-y:auto;padding-right:4px}
+textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px solid var(--line);border-radius:12px;color:var(--ink);font:500 .8rem ui-monospace,Menlo,monospace;padding:10px;resize:vertical}
+
+@media (max-width:820px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .sticky{display:flex}
+  .card{padding:18px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Mon salaire, <em>en net réel</em></h1>
+    <p>Simuler une augmentation, suivre son évolution dans le temps et la comparer au SMIC.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tab="simulateur">Simulateur</button>
+    <button type="button" role="tab" data-tab="evolution">Dans le temps</button>
+    <button type="button" role="tab" data-tab="reglages">Réglages</button>
+  </nav>
+
+  <!-- ============ SIMULATEUR ============ -->
+  <div class="panel" id="p-simulateur">
+    <div class="sticky" aria-hidden="true">
+      <div><small>Net après impôt</small><strong class="num" id="stNet">–</strong></div>
+      <span class="gain num" id="stGain">–</span>
+    </div>
+    <div class="grid">
+      <div class="col">
+        <section class="card">
+          <h2>Ma situation</h2>
+          <div class="fields">
+            <div class="field">
+              <span class="lbl">Salaire actuel <span class="hint">temps plein</span></span>
+              <div class="seg" id="segBase" role="group" aria-label="Je pars du">
+                <button type="button" data-v="brut">Je pars du brut</button>
+                <button type="button" data-v="net">du net</button>
+                <button type="button" data-v="reel">du net après impôt</button>
+              </div>
+              <div class="row">
+                <div><label class="sub" for="valM">Mensuel</label>
+                  <div class="inp"><input id="valM" type="text" inputmode="decimal" autocomplete="off"><span>€ / mois</span></div></div>
+                <div><label class="sub" for="valA">Annuel</label>
+                  <div class="inp"><input id="valA" type="text" inputmode="decimal" autocomplete="off"><span>€ / an</span></div></div>
+              </div>
+              <span class="hint num" id="baseEq"></span>
+              <div class="seg" id="segMois" role="group" aria-label="Nombre de mois payés">
+                <button type="button" data-v="12">Sur 12 mois</button>
+                <button type="button" data-v="13">Sur 13 mois</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="lbl">Augmentation <span class="hint num" id="augEq"></span></span>
+              <div class="row">
+                <div class="inp" style="flex:2 1 150px"><input id="aug" type="text" inputmode="decimal" autocomplete="off" aria-label="Augmentation"><span id="augUnit">%</span></div>
+                <div class="seg" id="segAug" role="group" aria-label="Type d'augmentation" style="flex:1 1 110px">
+                  <button type="button" data-v="pct">En %</button>
+                  <button type="button" data-v="eur">En €</button>
+                </div>
+              </div>
+              <input type="range" id="augR" min="0" max="20" step="0.1" aria-label="Curseur d'augmentation en pourcentage">
+            </div>
+
+            <div class="field">
+              <span class="lbl">Statut <span class="hint">fixe le taux de cotisations</span></span>
+              <div class="seg" id="segStatut" role="group" aria-label="Statut">
+                <button type="button" data-v="noncadre">Non-cadre</button>
+                <button type="button" data-v="cadre">Cadre</button>
+                <button type="button" data-v="public">Public</button>
+                <button type="button" data-v="custom">Perso</button>
+              </div>
+              <div class="inp sm"><input id="charges" type="text" inputmode="decimal" autocomplete="off" aria-label="Taux de cotisations salariales"><span>% de cotisations salariales</span></div>
+            </div>
+
+            <div class="field">
+              <label for="tax">Taux de prélèvement à la source</label>
+              <div class="inp"><input id="tax" type="text" inputmode="decimal" autocomplete="off"><span>% d'impôt</span></div>
+              <input type="range" class="tax" id="taxR" min="0" max="45" step="0.1" aria-label="Curseur du taux d'imposition">
+              <span class="hint">Le taux figure sur ta fiche de paie ou sur impots.gouv.fr, rubrique « Gérer mon prélèvement à la source ».</span>
+            </div>
+
+            <div class="field">
+              <span class="lbl">Temps de travail</span>
+              <div class="row">
+                <div class="seg" id="segQuot" role="group" aria-label="Quotité de travail" style="flex:3 1 200px">
+                  <button type="button" data-v="100">100 %</button>
+                  <button type="button" data-v="90">90 %</button>
+                  <button type="button" data-v="80">80 %</button>
+                  <button type="button" data-v="50">50 %</button>
+                </div>
+                <div class="inp sm" style="flex:1 1 90px"><input id="quot" type="text" inputmode="decimal" autocomplete="off" aria-label="Quotité de travail en pourcentage"><span>%</span></div>
+              </div>
+            </div>
+            <button type="button" class="link" id="reset">Remettre les valeurs d'exemple du simulateur</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card hero" aria-live="polite">
+          <div class="herotop">
+            <span class="eyebrow">Net après impôt, après augmentation</span>
+            <div class="seg" id="segPer" role="group" aria-label="Période d'affichage">
+              <button type="button" data-v="m">Par mois</button>
+              <button type="button" data-v="a">Par an</button>
+            </div>
+          </div>
+          <div class="big num"><span id="hNet">–</span><small id="hPer">/ mois</small></div>
+          <div class="line">
+            <span class="pill num" id="hGain">–</span>
+            <span class="pill num" id="hSmic"></span>
+            <span class="was num" id="hWas"></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Avant / après</h2>
+          <div class="scroll">
+            <table class="tbl">
+              <thead><tr><th></th><th>Avant</th><th>Après</th><th>Gain</th></tr></thead>
+              <tbody>
+                <tr><td class="k">Brut</td><td id="tB0"></td><td class="after" id="tB1"></td><td><span class="gain" id="tBg"></span></td></tr>
+                <tr><td class="k">Net avant impôt<small id="tChL"></small></td><td id="tN0"></td><td class="after" id="tN1"></td><td><span class="gain" id="tNg"></span></td></tr>
+                <tr class="taxrow"><td class="k">Impôt prélevé<small id="tTxL"></small></td><td id="tI0"></td><td class="after" id="tI1"></td><td id="tIg"></td></tr>
+                <tr class="final"><td class="k">Net après impôt</td><td id="tR0"></td><td class="after" id="tR1"></td><td><span class="gain" id="tRg"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Où part mon brut augmenté</h2>
+          <div class="split" role="img" aria-label="Répartition du brut">
+            <i class="s-net" id="spNet"></i><i class="s-tax" id="spTax"></i><i class="s-ch" id="spCh"></i>
+          </div>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--accent)"></i>Dans ma poche <b id="lgNet"></b></span>
+            <span><i class="dot" style="background:var(--tax)"></i>Impôt <b id="lgTax"></b></span>
+            <span><i class="dot" style="background:var(--line)"></i>Cotisations <b id="lgCh"></b></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Comparer des scénarios</h2>
+          <div class="scroll">
+            <table class="tbl sc">
+              <thead><tr><th>Hausse</th><th>Brut</th><th>Net après impôt</th><th>Gain net</th></tr></thead>
+              <tbody id="scBody"></tbody>
+            </table>
+          </div>
+          <p class="hint" style="margin:10px 0 0">Les pourcentages sont modifiables. La ligne surlignée est ton augmentation saisie.</p>
+        </section>
+
+        <section class="card">
+          <details>
+            <summary>Comment c'est calculé</summary>
+            <ul>
+              <li>Net avant impôt = brut × (1 − taux de cotisations). Repères moyens : 22 % non-cadre, 25 % cadre, 15 % fonction publique. Le taux exact dépend de ta convention, de ta mutuelle et de ta prévoyance.</li>
+              <li>En partant du net, le brut est retrouvé avec le même taux, dans l'autre sens.</li>
+              <li>Pour coller à ta fiche de paie : divise ton net à payer avant impôt par ton brut, et saisis le taux obtenu en mode « Perso ».</li>
+              <li>L'impôt s'applique au net imposable, un peu plus élevé que le net versé car une part de CSG/CRDS (2,9 % de 98,25 % du brut) n'est pas déductible.</li>
+              <li>Le taux d'imposition est supposé inchangé après l'augmentation. Une hausse importante peut le faire monter l'année suivante.</li>
+              <li>Les montants sont des estimations arrondies à l'euro, hors primes, heures supplémentaires et avantages en nature.</li>
+            </ul>
+          </details>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DANS LE TEMPS ============ -->
+  <div class="panel" id="p-evolution" hidden>
+    <div class="banner" id="exBanner">Données d'exemple : remplace le salaire de départ, les dates et les augmentations par les tiens.</div>
+    <div class="grid">
+      <div class="col">
+        <section class="card">
+          <h2>Mon point de départ</h2>
+          <div class="fields">
+            <div class="field">
+              <span class="lbl">Salaire de départ</span>
+              <div class="row">
+                <div class="inp" style="flex:2 1 150px"><input id="tStartVal" type="text" inputmode="decimal" autocomplete="off" aria-label="Salaire de départ"><span id="tStartUnit">€ / mois</span></div>
+                <div class="seg" id="segTBase" role="group" aria-label="Brut ou net" style="flex:1 1 120px">
+                  <button type="button" data-v="brut">Brut</button>
+                  <button type="button" data-v="net">Net</button>
+                  <button type="button" data-v="heure">€/h</button>
+                </div>
+              </div>
+              <span class="hint num" id="tStartEq"></span>
+            </div>
+            <div class="row">
+              <div class="field"><label for="tStart">Date de ce salaire</label>
+                <div class="inp sm"><input id="tStart" type="month" placeholder="AAAA-MM"></div></div>
+              <div class="field"><label for="tEntry">Entrée dans l'entreprise</label>
+                <div class="inp sm"><input id="tEntry" type="month" placeholder="AAAA-MM"></div></div>
+            </div>
+            <div class="field"><label for="tEnd">Projeter jusqu'à fin</label>
+              <div class="inp sm"><input id="tEnd" type="text" inputmode="numeric" autocomplete="off"><span>année</span></div>
+              <span class="hint">L'ancienneté compte depuis la date d'entrée. Les paliers atteints avant la date du salaire de départ sont considérés comme déjà inclus dedans.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Mes fiches de paie</h2>
+          <p class="lead">Recopie le <b>taux horaire</b> (ou le salaire de base mensuel) de tes fiches, hors heures supplémentaires et primes. Une fiche par an suffit, plus une à chaque changement de taux.</p>
+          <div class="fields">
+            <div class="field"><label for="hours">Heures du contrat par mois</label>
+              <div class="inp sm"><input id="hours" type="text" inputmode="decimal" autocomplete="off"><span>h / mois</span></div>
+              <span class="hint">35 h par semaine = 151,67 h · 39 h = 169 h</span>
+            </div>
+            <div class="field">
+              <span class="lbl">La courbe suit</span>
+              <div class="seg" id="segMode" role="group" aria-label="Source de la courbe">
+                <button type="button" data-v="calc">Mes augmentations saisies</button>
+                <button type="button" data-v="fiches">Mes fiches de paie</button>
+              </div>
+              <span class="hint" id="modeHint"></span>
+            </div>
+          </div>
+          <div class="list" id="payList" style="margin-top:8px"></div>
+          <button type="button" class="btn primary" id="addPay" style="margin-top:12px">+ Ajouter une fiche de paie</button>
+        </section>
+
+        <section class="card">
+          <h2>Mes augmentations individuelles</h2>
+          <p class="lead" id="raisesHint">Celles obtenues avec ton responsable (objectifs, promotion, négociation).</p>
+          <div class="list" id="raises"></div>
+          <button type="button" class="btn primary" id="addRaise" style="margin-top:12px">+ Ajouter une augmentation</button>
+        </section>
+
+        <section class="card">
+          <h2>Ancienneté et prime de Noël</h2>
+          <p class="lead num" id="senSum"></p>
+          <button type="button" class="btn" data-go="reglages">Modifier dans Réglages</button>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card">
+          <div class="herotop" style="margin-bottom:14px">
+            <h2 style="margin:0">Où j'en suis</h2>
+            <div class="seg" id="segView" role="group" aria-label="Affichage des montants">
+              <button type="button" data-v="brut">Brut</button>
+              <button type="button" data-v="net">Net</button>
+              <button type="button" data-v="reel">Net après impôt</button>
+            </div>
+          </div>
+          <div class="tiles num">
+            <div class="tile main"><small>Salaire aujourd'hui</small><strong id="kNow">–</strong><span id="kNowS"></span></div>
+            <div class="tile"><small>Depuis le départ</small><strong id="kEvo">–</strong><span id="kEvoS"></span></div>
+            <div class="tile"><small id="kIndL">Gagné en individuel</small><strong id="kInd">–</strong><span id="kIndS"></span></div>
+            <div class="tile"><small>Gagné à l'ancienneté</small><strong id="kSen">–</strong><span id="kSenS"></span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Mon salaire face au SMIC et à l'inflation</h2>
+          <div class="readout num" id="readout"></div>
+          <div id="chart" role="img" aria-label="Courbes du salaire mensuel, du SMIC et de l'inflation dans le temps"></div>
+          <div class="legend" style="margin-top:10px">
+            <span><i class="dot" style="background:var(--accent)"></i>Mon salaire</span>
+            <span><i class="dot" style="background:var(--muted)"></i>SMIC</span>
+            <span><i class="dot" style="background:var(--tax)"></i>Salaire de départ indexé sur l'inflation</span>
+            <span><i class="dot r" style="background:var(--accent)"></i>Individuelle</span>
+            <span><i class="dot r" style="background:var(--senior)"></i>Ancienneté</span>
+            <span id="lgPay"><i class="dot" style="background:var(--ink);transform:rotate(45deg)"></i>Fiche de paie</span>
+            <span>Pointillés : projection</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Chronologie des augmentations</h2>
+          <div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th style="text-align:left">Type</th><th>Hausse</th><th>Salaire après</th></tr></thead><tbody id="evBody"></tbody></table></div>
+        </section>
+
+        <section class="card" id="payCard">
+          <h2>Contrôle avec mes fiches de paie</h2>
+          <div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Fiche de paie</th><th>Calculé</th><th>Écart</th></tr></thead><tbody id="payBody"></tbody></table></div>
+          <p class="hint" id="payNote" style="margin:10px 0 0"></p>
+        </section>
+
+        <section class="card">
+          <h2>Année par année</h2>
+          <div class="scroll"><table class="tbl"><thead><tr><th>Année</th><th>Mensuel en déc.</th><th>Prime de Noël</th><th>Total annuel</th></tr></thead><tbody id="yrBody"></tbody></table></div>
+          <p class="hint" id="yrNote" style="margin:10px 0 0"></p>
+        </section>
+      </div>
+    </div>
+
+    <section class="card ask" style="margin-top:20px">
+      <div class="askgrid">
+        <div class="askhead">
+          <span class="eyebrow">Prochaine augmentation à demander</span>
+          <div class="askbig num" id="askBig">–</div>
+          <p class="num" id="askSub"></p>
+        </div>
+        <div class="scroll">
+          <table class="tbl"><thead><tr><th>Objectif</th><th>Hausse</th><th>Par mois</th></tr></thead><tbody id="askBody"></tbody></table>
+        </div>
+      </div>
+      <p class="hint num" id="askNote" style="margin:14px 0 0"></p>
+    </section>
+  </div>
+
+  <!-- ============ RÉGLAGES ============ -->
+  <div class="panel" id="p-reglages" hidden>
+    <div class="grid">
+      <div class="col">
+        <section class="card">
+          <h2>Augmentations d'ancienneté</h2>
+          <p class="lead">Un palier par ligne : au bout de combien d'années, et de combien.</p>
+          <div class="field" style="margin-bottom:8px">
+            <div class="seg" id="segSenMode" role="group" aria-label="Mode de calcul de l'ancienneté">
+              <button type="button" data-v="compose">Chaque palier augmente le salaire</button>
+              <button type="button" data-v="base">Prime en % du salaire de base</button>
+            </div>
+            <span class="hint" id="senModeHint"></span>
+          </div>
+          <div class="list" id="senList"></div>
+          <div class="row" style="margin-top:12px;align-items:center">
+            <button type="button" class="btn primary" id="addSen" style="flex:0 0 auto">+ Ajouter un palier</button>
+            <span class="hint num" id="senTotal"></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Prime de Noël</h2>
+          <div class="fields">
+            <div class="seg" id="segPrime" role="group" aria-label="Prime de Noël">
+              <button type="button" data-v="1">Avec prime</button>
+              <button type="button" data-v="0">Sans prime</button>
+            </div>
+            <div class="field"><label for="primePct">Montant de la prime</label>
+              <div class="inp"><input id="primePct" type="text" inputmode="decimal" autocomplete="off"><span>% du salaire de décembre</span></div>
+              <span class="hint num" id="primeEq"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Sauvegarde</h2>
+          <p class="lead" id="syncSt">Tes données restent uniquement sur cet appareil, dans le stockage de ce navigateur. Rien n'est envoyé sur internet. Garde une copie de temps en temps : elles disparaissent si tu supprimes l'icône de l'écran d'accueil ou les données du site.</p>
+          <div class="row">
+            <button type="button" class="btn" id="copyData">Copier mes données</button>
+            <button type="button" class="btn" id="showRestore">Restaurer une copie</button>
+          </div>
+          <div id="restoreBox" hidden style="margin-top:12px">
+            <textarea id="restoreTxt" aria-label="Données à restaurer" placeholder="Colle ici la copie de tes données"></textarea>
+            <div class="row" style="margin-top:8px;align-items:center"><button type="button" class="btn primary" id="doRestore" style="flex:0 0 auto">Restaurer</button><span class="hint" id="restoreMsg"></span></div>
+          </div>
+          <button type="button" class="link" id="resetAll" style="margin-top:12px">Tout remettre aux valeurs d'exemple</button>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card">
+          <h2>Inflation</h2>
+          <p class="lead">Hausse des prix par année, en %. De 2022 à 2025 : moyennes annuelles de l'Insee, vérifiées. Avant 2022 : valeurs de mémoire, à contrôler si besoin. 2026 : estimation provisoire (rythme sur un an en octobre), à corriger quand l'Insee publiera le chiffre de l'année.</p>
+          <div class="list tall" id="inflList"></div>
+          <div class="row" style="margin-top:12px;align-items:center">
+            <button type="button" class="btn primary" id="addInfl" style="flex:0 0 auto">+ Ajouter une année</button>
+            <button type="button" class="link" id="resetInfl" style="flex:0 0 auto">Remettre les valeurs d'origine</button>
+          </div>
+          <div class="field" style="margin-top:14px"><label for="inflFuture">Hypothèse pour les années sans ligne (projection)</label>
+            <div class="inp sm"><input id="inflFuture" type="text" inputmode="decimal" autocomplete="off"><span>% par an</span></div></div>
+        </section>
+
+        <section class="card">
+          <h2>Montants du SMIC</h2>
+          <p class="lead">SMIC brut mensuel pour 35 h, à chaque revalorisation. Valeurs officielles jusqu'au 1<sup>er</sup> juin 2026 ; ajoute une ligne à la prochaine hausse.</p>
+          <div class="list tall" id="smicList"></div>
+          <div class="row" style="margin-top:12px;align-items:center">
+            <button type="button" class="btn primary" id="addSmic" style="flex:0 0 auto">+ Ajouter une revalorisation</button>
+            <button type="button" class="link" id="resetSmic" style="flex:0 0 auto">Remettre les valeurs officielles</button>
+          </div>
+        </section>
+        <section class="card">
+          <details>
+            <summary>Comment l'évolution est calculée</summary>
+            <ul>
+              <li>Le salaire avance mois par mois depuis la date de départ. Une augmentation individuelle s'applique à partir du mois indiqué.</li>
+              <li>Les paliers d'ancienneté tombent au mois anniversaire de l'entrée dans l'entreprise.</li>
+              <li>Un taux horaire est converti en salaire mensuel avec les heures du contrat (151,67 h pour 35 h par semaine).</li>
+              <li>Si la courbe suit tes augmentations saisies, les fiches de paie ne la modifient pas : elles apparaissent en losanges et servent à repérer une augmentation oubliée.</li>
+              <li>Si la courbe suit tes fiches de paie, chaque hausse constatée est datée du mois de la fiche. La part correspondant aux paliers d'ancienneté franchis entre deux fiches est comptée en ancienneté, le reste en « autre hausse » (individuelle ou générale).</li>
+              <li>La courbe d'inflation montre ce que vaudrait ton salaire de départ s'il avait seulement suivi les prix. La hausse de chaque année est répartie également sur ses douze mois, ce qui est une approximation.</li>
+              <li>L'augmentation à demander part de ta dernière augmentation, quelle qu'elle soit (individuelle ou ancienneté), et prend le plus élevé des deux : la hausse des prix ou celle du SMIC depuis cette date.</li>
+              <li>La prime de Noël s'ajoute au total de l'année, calculée sur le salaire de décembre.</li>
+              <li>Après la dernière ligne du tableau, le SMIC est supposé stable : la partie projetée de sa courbe est donc plate.</li>
+              <li>En net, salaire et SMIC utilisent le taux de cotisations et le taux d'impôt saisis dans le Simulateur, appliqués à toute la période.</li>
+            </ul>
+          </details>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SMIC_DEF = [['2008-07',1321.02],['2009-07',1337.70],['2010-01',1343.77],['2011-01',1365.00],['2011-12',1393.82],['2012-01',1398.37],['2012-07',1425.67],['2013-01',1430.22],['2014-01',1445.38],['2015-01',1457.52],['2016-01',1466.62],['2017-01',1480.27],['2018-01',1498.47],['2019-01',1521.22],['2020-01',1539.42],['2021-01',1554.58],['2021-10',1589.47],['2022-01',1603.12],['2022-05',1645.58],['2022-08',1678.95],['2023-01',1709.28],['2023-05',1747.20],['2024-01',1766.92],['2024-11',1801.80],['2026-01',1823.03],['2026-06',1867.02]];
+  var INFL_DEF = [[2008,2.8],[2009,0.1],[2010,1.5],[2011,2.1],[2012,2.0],[2013,0.9],[2014,0.5],[2015,0.0],[2016,0.2],[2017,1.0],[2018,1.8],[2019,1.1],[2020,0.5],[2021,1.6],[2022,5.2],[2023,4.9],[2024,2.0],[2025,0.9],[2026,3.4]];
+  function inflDef(){ return INFL_DEF.map(function(r){return {y:r[0],p:r[1]};}); }
+  function smicDef(){ return SMIC_DEF.map(function(r){return {d:r[0],v:r[1]};}); }
+  var NOW = new Date(), NOW_N = NOW.getFullYear()*12 + NOW.getMonth();
+  function defaults(){ return {
+    base:'brut', val:2800, mois:12, aug:3, augMode:'pct', statut:'noncadre', charges:22, tax:5, quot:100, per:'m', sc:[2,3,5,10],
+    t:{example:true, start:'2015-01', startVal:1800, startBase:'brut', entry:'2015-01', end:NOW.getFullYear()+8, view:'brut', mode:'calc',
+       raises:[{d:'2016-04',type:'pct',v:3,note:'Objectifs atteints'},{d:'2019-03',type:'eur',v:80,note:''},{d:'2022-04',type:'pct',v:4,note:'Nouvelles responsabilités'},{d:'2025-03',type:'pct',v:2.5,note:''}]},
+    g:{senior:[{y:4,p:4},{y:6,p:2},{y:8,p:2},{y:10,p:2},{y:12,p:2},{y:15,p:3},{y:17,p:2},{y:20,p:2}], seniorMode:'compose', primeOn:true, primePct:50, smic:smicDef(), pays:[], infl:inflDef(), inflFuture:2, hours:151.67},
+    updatedAt:0
+  };}
+  var RATES = {noncadre:22, cadre:25, 'public':15};
+  var KEY = 'calc-augmentation-v2', KEY_OLD = 'calc-augmentation-v1';
+  var S = defaults(), hadLocal = false;
+
+  function adopt(o){
+    if(!o || typeof o!=='object') return false;
+    var d = defaults(), k;
+    for(k in d){ if(k!=='t' && k!=='g' && o[k]!==undefined) d[k]=o[k]; }
+    if(o.brutM!==undefined && o.val===undefined){ d.val=o.brutM; d.base='brut'; }
+    if(o.t && typeof o.t==='object'){ for(k in d.t) if(o.t[k]!==undefined) d.t[k]=o.t[k]; }
+    if(o.g && typeof o.g==='object'){ for(k in d.g) if(o.g[k]!==undefined) d.g[k]=o.g[k]; }
+    if(!Array.isArray(d.sc) || d.sc.length!==4) d.sc=[2,3,5,10];
+    if(!Array.isArray(d.t.raises)) d.t.raises=[];
+    if(!Array.isArray(d.g.senior)) d.g.senior=[];
+    if(!Array.isArray(d.g.smic) || !d.g.smic.length) d.g.smic=smicDef();
+    if(!Array.isArray(d.g.pays)) d.g.pays=[];
+    if(!Array.isArray(d.g.infl) || !d.g.infl.length) d.g.infl=inflDef();
+    S = d; return true;
+  }
+  try{
+    var raw = localStorage.getItem(KEY) || localStorage.getItem(KEY_OLD);
+    if(raw){ hadLocal = adopt(JSON.parse(raw)); }
+  }catch(e){}
+
+  var $ = function(id){return document.getElementById(id)};
+  var nf0 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+  var nf2 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2});
+  var nf1 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1});
+  var MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  function eur(n){ return nf0.format(Math.round(n)) + ' €'; }
+  function signed(n){ var r=Math.round(n); return (r>0?'+':(r<0?'−':'')) + nf0.format(Math.abs(r)) + ' €'; }
+  function spct(n){ return (n>0?'+':(n<0?'−':'')) + nf1.format(Math.abs(n)) + ' %'; }
+  function parse(v){ var n = parseFloat(String(v).replace(/[\s  ]/g,'').replace(',','.')); return isFinite(n)? n : 0; }
+  function clamp(n,a,b){ return Math.min(b,Math.max(a,n)); }
+  var nf4 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:4});
+  function fmtIn4(n){ return nf4.format(Math.round(n*10000)/10000).replace(/[\u00a0\u202f]/g,' '); }
+  function hours(){ return S.g.hours>0 ? S.g.hours : 151.67; }
+  function payBrut(p){ return p.u==='h' ? p.v*hours() : p.v; }
+  function startBrut(){ return S.t.startBase==='net' ? S.t.startVal/fac('net') : (S.t.startBase==='heure' ? S.t.startVal*hours() : S.t.startVal); }
+  function fmtIn(n){ return nf2.format(Math.round(n*100)/100).replace(/[  ]/g,' '); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function toN(s){ // 'AAAA-MM' ou 'MM/AAAA' -> index de mois, ou null
+    var m = /^(\d{4})-(\d{1,2})$/.exec(String(s||'').trim()), y, mo;
+    if(m){ y=+m[1]; mo=+m[2]; } else { m=/^(\d{1,2})\/(\d{4})$/.exec(String(s||'').trim()); if(!m) return null; y=+m[2]; mo=+m[1]; }
+    if(mo<1||mo>12||y<1950||y>2100) return null;
+    return y*12+mo-1;
+  }
+  function fmtM(n){ return MOIS[n%12]+' '+Math.floor(n/12); }
+
+  // Facteur brut -> base d'affichage
+  function fac(basis){
+    var c=S.charges/100, t=S.tax/100;
+    if(basis==='net') return Math.max(.05, 1-c);
+    if(basis==='reel') return Math.max(.05, (1-c) - ((1-c)+0.9825*0.029)*t);
+    return 1;
+  }
+  function brutM(){ return S.val / fac(S.base); }
+  function smicAt(n){
+    var best=null, bn=-1;
+    for(var i=0;i<S.g.smic.length;i++){ var k=toN(S.g.smic[i].d); if(k!==null && k<=n && k>=bn && S.g.smic[i].v>0){ bn=k; best=S.g.smic[i].v; } }
+    return best;
+  }
+
+  // ---------- Simulateur : calcul pur, montants mensuels ----------
+  function calc(baseM, augMode, aug, chargesPct, taxPct, quotPct){
+    var q = quotPct/100, c = chargesPct/100, t = taxPct/100;
+    function line(brut){
+      var net = brut*(1-c), imposable = net + brut*0.9825*0.029, impot = imposable*t;
+      return {brut:brut, net:net, impot:impot, reel:net-impot};
+    }
+    var b0 = baseM*q;
+    var b1 = augMode==='eur' ? (baseM+aug)*q : b0*(1+aug/100);
+    return {avant:line(b0), apres:line(b1)};
+  }
+
+  // ---------- Évolution : calcul pur, brut mensuel mois par mois ----------
+  function timeline(){
+    var n0 = toN(S.t.start), entry = toN(S.t.entry);
+    if(n0===null) n0 = NOW_N; if(entry===null) entry = n0;
+    var endY = clamp(Math.round(S.t.end)||NOW.getFullYear(), Math.floor(n0/12), Math.floor(n0/12)+60);
+    var n1 = endY*12+11;
+    var base = startBrut();
+    var senPct = 0, ev = [], brut=[], smic=[], px=[], i;
+    var inflBy = {}, inflMax = -1;
+    S.g.infl.forEach(function(r){ var yy=Math.round(r.y); if(yy>1900){ inflBy[yy]=r.p; inflMax=Math.max(inflMax,yy); } });
+    function rate(yy){ return inflBy[yy]!==undefined ? inflBy[yy] : (yy>inflMax ? S.g.inflFuture : 0); }
+    var byMonth = {};
+    S.t.raises.forEach(function(r){ var k=toN(r.d); if(k===null||k<=n0||k>n1||!r.v) return; (byMonth[k]=byMonth[k]||[]).push({kind:'ind',r:r}); });
+    S.g.senior.forEach(function(s){ if(!(s.y>0)||!s.p) return; var k=entry+Math.round(s.y*12); if(k<=n0||k>n1) return; (byMonth[k]=byMonth[k]||[]).push({kind:'sen',s:s}); });
+    var fich = S.t.mode==='fiches', payAt = {}, lastPay = -1, prevPay = n0;
+    if(fich){
+      S.g.pays.forEach(function(p){ var k=toN(p.d), v=payBrut(p); if(k===null||!(v>0)||k<n0||k>n1) return; payAt[k]=v; lastPay=Math.max(lastPay,k); });
+      if(lastPay<0) fich=false; else if(payAt[n0]) base=payAt[n0];
+    }
+    ev.push({n:n0, kind:'start', label:'', after:base});
+    for(var n=n0;n<=n1;n++){
+      var list = (fich && n<=lastPay) ? null : byMonth[n];
+      if(fich && n>n0 && payAt[n]){
+        var cur = base, tgt = payAt[n], F = 1, yrs = [];
+        S.g.senior.forEach(function(s){ if(!(s.y>0)||!s.p) return; var k=entry+Math.round(s.y*12); if(k>prevPay && k<=n){ F*=1+s.p/100; yrs.push(nf1.format(s.y)); } });
+        prevPay = n;
+        var tol = Math.max(0.5, cur*0.001);
+        if(Math.abs(tgt-cur) > tol){
+          if(F>1 && tgt>cur){
+            var mid = Math.min(tgt, cur*F);
+            if(tgt-mid <= tol) mid = tgt;
+            ev.push({n:n, kind:'sen', label:spct((mid/cur-1)*100), note:yrs.join(' et ')+' ans d\'ancienneté', before:cur, after:mid});
+            if(mid<tgt) ev.push({n:n, kind:'ind', tag:'Autre hausse', label:spct((tgt/mid-1)*100), note:'individuelle ou générale, lue sur la fiche de paie', before:mid, after:tgt});
+          } else ev.push({n:n, kind:'ind', tag:(tgt>cur?'Autre hausse':'Baisse'), label:spct((tgt/cur-1)*100), note:'lue sur la fiche de paie', before:cur, after:tgt});
+        }
+        base = tgt;
+      }
+      if(list){
+        list.sort(function(a,b){ return a.kind===b.kind?0:(a.kind==='ind'?-1:1); });
+        for(i=0;i<list.length;i++){
+          var before = base*(1+senPct/100), e=list[i], label;
+          if(e.kind==='ind'){
+            if(e.r.type==='eur'){ base += e.r.v; label = signed(e.r.v)+' brut'; } else { base *= 1+e.r.v/100; label = spct(e.r.v); }
+          } else {
+            if(S.g.seniorMode==='base') senPct += e.s.p; else base *= 1+e.s.p/100;
+            label = spct(e.s.p);
+          }
+          var after = base*(1+senPct/100);
+          ev.push({n:n, kind:e.kind, label:label, note:e.kind==='ind'?(e.r.note||''):(nf1.format(e.s.y)+' ans d\'ancienneté'), before:before, after:after});
+        }
+      }
+      brut.push(base*(1+senPct/100));
+      smic.push(smicAt(n));
+      px.push(n===n0 ? 1 : px[px.length-1]*Math.pow(1+rate(Math.floor(n/12))/100, 1/12));
+    }
+    return {fich:fich, lastPay:lastPay, n0:n0, n1:n1, entry:entry, brut:brut, smic:smic, px:px, ev:ev, iT:clamp(NOW_N-n0,0,n1-n0)};
+  }
+
+  // ---------- Rendu ----------
+  function setSeg(id, val){
+    var bs = $(id).querySelectorAll('button');
+    for(var i=0;i<bs.length;i++) bs[i].setAttribute('aria-pressed', String(bs[i].dataset.v===String(val)));
+  }
+  function setVal(id, v){ var el=$(id); if(document.activeElement!==el) el.value = v; }
+
+  function buildScenarios(){
+    var h='';
+    for(var i=0;i<5;i++){
+      if(i===4) h+='<tr class="cur"><td class="k" id="scL4"></td><td id="scB4"></td><td class="after" id="scR4"></td><td><span class="gain" id="scG4"></span></td></tr>';
+      else h+='<tr><td><div class="inp"><input id="sc'+i+'" type="text" inputmode="decimal" autocomplete="off" aria-label="Pourcentage du scénario '+(i+1)+'"><span>%</span></div></td><td id="scB'+i+'"></td><td class="after" id="scR'+i+'"></td><td><span class="gain" id="scG'+i+'"></span><div class="bar" id="scBar'+i+'"></div></td></tr>';
+    }
+    $('scBody').innerHTML = h;
+    for(var j=0;j<4;j++){ (function(j){
+      $('sc'+j).addEventListener('input', function(){ S.sc[j] = clamp(parse(this.value),-50,200); changed(); });
+      $('sc'+j).addEventListener('blur', function(){ this.value = fmtIn(S.sc[j]); });
+    })(j); }
+  }
+
+  function renderSim(){
+    var mult = S.per==='a' ? S.mois : 1, bM = brutM();
+    var r = calc(bM, S.augMode, S.aug, S.charges, S.tax, S.quot), a=r.avant, b=r.apres;
+    setVal('valM', fmtIn(S.val)); setVal('valA', fmtIn(S.val*S.mois));
+    setVal('aug', fmtIn(S.aug)); setVal('charges', fmtIn(S.charges)); setVal('tax', fmtIn(S.tax)); setVal('quot', fmtIn(S.quot));
+    for(var j=0;j<4;j++) setVal('sc'+j, fmtIn(S.sc[j]));
+    setSeg('segBase', S.base); setSeg('segMois', S.mois); setSeg('segAug', S.augMode); setSeg('segStatut', S.statut);
+    setSeg('segQuot', S.quot); setSeg('segPer', S.per);
+    $('baseEq').textContent = S.base==='brut' ? '' : 'soit ' + eur(bM) + ' brut / mois';
+    $('augUnit').textContent = S.augMode==='eur' ? '€ brut / mois' : '%';
+    var pctEq = S.augMode==='eur' ? (bM>0 ? S.aug/bM*100 : 0) : S.aug;
+    $('augEq').textContent = S.augMode==='eur' ? 'soit ' + nf2.format(Math.round(pctEq*100)/100) + ' %' : 'soit ' + signed(bM*S.aug/100) + ' brut / mois';
+    $('augR').value = clamp(pctEq,0,20); $('taxR').value = clamp(S.tax,0,45);
+
+    var perTxt = S.per==='a' ? '/ an' : '/ mois', gain = (b.reel-a.reel)*mult;
+    $('hNet').textContent = eur(b.reel*mult); $('hPer').textContent = perTxt;
+    $('hGain').textContent = signed(gain) + ' ' + perTxt.replace('/ ','par ');
+    $('hGain').className = 'pill num' + (gain<0?' neg':'');
+    var sm = smicAt(NOW_N), q = S.quot/100;
+    if(sm && q>0){ $('hSmic').hidden=false; $('hSmic').textContent = nf2.format(b.brut/q/sm) + ' × le SMIC'; } else $('hSmic').hidden=true;
+    $('hWas').textContent = 'contre ' + eur(a.reel*mult) + ' aujourd\'hui' + (S.per==='m' ? ' · ' + signed((b.reel-a.reel)*S.mois) + ' sur l\'année' : '');
+    $('stNet').textContent = eur(b.reel*mult) + ' ' + perTxt;
+    $('stGain').textContent = signed(gain); $('stGain').className = 'gain num' + (gain<0?' neg':'');
+
+    function g(id, v){ var el=$(id); el.textContent = signed(v*mult); el.className = 'gain' + (v<0?' neg':''); }
+    $('tB0').textContent = eur(a.brut*mult); $('tB1').textContent = eur(b.brut*mult); g('tBg', b.brut-a.brut);
+    $('tN0').textContent = eur(a.net*mult);  $('tN1').textContent = eur(b.net*mult);  g('tNg', b.net-a.net);
+    $('tI0').textContent = '−' + eur(a.impot*mult); $('tI1').textContent = '−' + eur(b.impot*mult);
+    $('tIg').textContent = signed(-(b.impot-a.impot)*mult);
+    $('tR0').textContent = eur(a.reel*mult); $('tR1').textContent = eur(b.reel*mult); g('tRg', b.reel-a.reel);
+    $('tChL').textContent = 'après ' + nf2.format(S.charges) + ' % de cotisations';
+    $('tTxL').textContent = 'taux de ' + nf2.format(S.tax) + ' %';
+
+    var tot = b.brut>0 ? b.brut : 1;
+    var pN = clamp(b.reel/tot*100,0,100), pT = clamp(b.impot/tot*100,0,100), pC = clamp(100-pN-pT,0,100);
+    $('spNet').style.width = pN+'%'; $('spTax').style.width = pT+'%'; $('spCh').style.width = pC+'%';
+    $('lgNet').textContent = nf0.format(pN)+' %'; $('lgTax').textContent = nf0.format(pT)+' %'; $('lgCh').textContent = nf0.format(pC)+' %';
+
+    var rows=[], maxG=0, i;
+    for(i=0;i<4;i++){ var x = calc(bM,'pct',S.sc[i],S.charges,S.tax,S.quot); rows.push(x); maxG = Math.max(maxG, x.apres.reel-x.avant.reel); }
+    for(i=0;i<4;i++){
+      var d = rows[i].apres.reel-rows[i].avant.reel;
+      $('scB'+i).textContent = eur(rows[i].apres.brut*mult); $('scR'+i).textContent = eur(rows[i].apres.reel*mult);
+      $('scG'+i).textContent = signed(d*mult); $('scG'+i).className = 'gain'+(d<0?' neg':'');
+      $('scBar'+i).style.width = (maxG>0 && d>0 ? Math.max(3, d/maxG*100) : 0)+'%';
+    }
+    $('scL4').textContent = nf2.format(Math.round(pctEq*100)/100)+' %';
+    $('scB4').textContent = eur(b.brut*mult); $('scR4').textContent = eur(b.reel*mult);
+    $('scG4').textContent = signed(gain); $('scG4').className = 'gain'+(gain<0?' neg':'');
+  }
+
+  var TL = null, CH = null;
+  function viewName(){ return S.t.view==='net' ? 'net' : (S.t.view==='reel' ? 'net après impôt' : 'brut'); }
+
+  function renderEvo(){
+    TL = timeline();
+    var f = fac(S.t.view), iT = TL.iT, last = TL.brut.length-1, i;
+    $('exBanner').hidden = !S.t.example;
+    setVal('tStartVal', fmtIn4(S.t.startVal)); setVal('hours', fmtIn4(hours())); setSeg('segMode', S.t.mode);
+    $('tStartUnit').textContent = S.t.startBase==='heure' ? '€ / heure' : '€ / mois';
+    $('tStartEq').textContent = S.t.startBase==='brut' ? '' : 'soit ' + eur(startBrut()) + ' brut par mois';
+    $('modeHint').textContent = S.t.mode!=='fiches' ? 'La courbe est calculée avec ton salaire de départ, tes augmentations individuelles et l\'ancienneté. Les fiches servent de contrôle.'
+      : (TL.fich ? 'La courbe passe par tes fiches de paie. Chaque hausse est datée du mois de la fiche où elle apparaît, et la part d\'ancienneté attendue est séparée du reste.' : 'Ajoute au moins une fiche de paie postérieure à la date de départ pour que la courbe la suive.');
+    $('raisesHint').textContent = TL.fich ? 'En mode fiches de paie, seules les augmentations datées après ta dernière fiche ('+fmtM(TL.lastPay)+') sont prises en compte.' : 'Celles obtenues avec ton responsable (objectifs, promotion, négociation).';
+    $('kIndL').textContent = TL.fich ? 'Gagné hors ancienneté' : 'Gagné en individuel';
+    $('payCard').hidden = TL.fich;
+    S.g.pays.forEach(function(p,i){ var e = document.getElementById('payEq'+i); if(e) e.textContent = p.v>0 ? (p.u==='h' ? '= ' + eur(payBrut(p)) + ' brut par mois' : '= ' + nf4.format(Math.round(p.v/hours()*1000)/1000) + ' € de l\'heure') : ''; }); setVal('tStart', S.t.start); setVal('tEntry', S.t.entry); setVal('tEnd', String(S.t.end));
+    setSeg('segTBase', S.t.startBase); setSeg('segView', S.t.view);
+
+    var now = TL.brut[iT], start = TL.brut[0], sNow = TL.smic[iT], sStart = TL.smic[0];
+    $('kNow').textContent = eur(now*f);
+    $('kNowS').textContent = viewName() + (sNow ? ' · ' + nf2.format(now/sNow) + ' × le SMIC' : '');
+    var evo = start>0 ? (now/start-1)*100 : 0;
+    $('kEvo').textContent = spct(evo);
+    $('kEvoS').textContent = 'prix ' + spct((TL.px[iT]-1)*100) + ((sNow && sStart) ? ' · SMIC ' + spct((sNow/sStart-1)*100) : '') + ' sur la même période';
+    var gi=0, gs=0, ni=0, ns=0, next=null;
+    TL.ev.forEach(function(e){
+      if(e.kind==='start') return;
+      if(e.n-TL.n0<=iT){ if(e.kind==='ind'){ gi+=e.after-e.before; ni++; } else { gs+=e.after-e.before; ns++; } }
+      else if(e.kind==='sen' && !next) next=e;
+    });
+    $('kInd').textContent = signed(gi*f); $('kIndS').textContent = ni + (ni>1?' augmentations':' augmentation') + ' · par mois';
+    $('kSen').textContent = signed(gs*f);
+    $('kSenS').textContent = next ? 'prochain palier : ' + next.label + ' en ' + fmtM(next.n) : ns + (ns>1?' paliers atteints':' palier atteint');
+
+    // Chronologie
+    var h='';
+    TL.ev.forEach(function(e){
+      var fut = e.n-TL.n0>iT;
+      var tag = e.kind==='start' ? '<span class="tag start">Départ</span>' : (e.kind==='ind' ? '<span class="tag ind">'+esc(e.tag||'Individuelle')+'</span>' : '<span class="tag sen">Ancienneté</span>');
+      h += '<tr'+(fut?' class="future"':'')+'><td class="k">'+fmtM(e.n)+(fut?'<small>à venir</small>':'')+'</td><td class="l">'+tag+(e.note?'<small style="display:block;color:var(--muted);font-size:.76rem;white-space:normal">'+esc(e.note)+'</small>':'')+'</td><td>'+(e.kind==='start'?'–':esc(e.label))+'</td><td class="after">'+eur(e.after*f)+'</td></tr>';
+    });
+    $('evBody').innerHTML = h;
+
+    // Contrôle avec les fiches de paie
+    var pays = S.g.pays.map(function(p){ return {n:toN(p.d), v:payBrut(p)}; }).filter(function(p){ return p.n!==null && p.v>0; }).sort(function(a,b){return a.n-b.n;});
+    $('lgPay').hidden = !pays.length;
+    h=''; var nGap=0, nOut=0;
+    pays.forEach(function(p){
+      var k = p.n-TL.n0;
+      if(k<0||k>last){ nOut++; h += '<tr class="future"><td class="k">'+fmtM(p.n)+'</td><td>'+eur(p.v*f)+'</td><td>–</td><td>hors période</td></tr>'; return; }
+      var c = TL.brut[k], d = p.v-c, ok = Math.abs(d) < Math.max(1, c*0.002);
+      if(!ok) nGap++;
+      h += '<tr><td class="k">'+fmtM(p.n)+'</td><td class="after">'+eur(p.v*f)+'</td><td>'+eur(c*f)+'</td><td>'+(ok?'<span class="tag ok">conforme</span>':'<span class="tag gap">'+signed(d*f)+' ('+spct(c>0?d/c*100:0)+')</span>')+'</td></tr>';
+    });
+    $('payBody').innerHTML = h || '<tr><td colspan="4" class="l" style="white-space:normal;color:var(--muted);font-weight:400">Aucune fiche saisie. Ajoute le taux horaire de quelques fiches de paie pour vérifier que la courbe colle à la réalité.</td></tr>';
+    $('payNote').textContent = !pays.length ? '' : (nGap ? 'Un écart positif signale une augmentation qui manque dans ta liste à cette période, par exemple une augmentation générale. Un écart négatif, une augmentation saisie trop tôt ou trop forte.' : 'La courbe calculée correspond à tes fiches de paie.');
+    TL.pays = pays;
+
+    // Année par année
+    var pr = S.g.primeOn ? S.g.primePct/100 : 0, y0 = Math.floor(TL.n0/12), y1 = Math.floor(TL.n1/12), cy = NOW.getFullYear();
+    h='';
+    for(var y=y0;y<=y1;y++){
+      var sum=0, dec=null;
+      for(var m=0;m<12;m++){ i = y*12+m-TL.n0; if(i<0||i>last) continue; sum+=TL.brut[i]; if(m===11) dec=TL.brut[i]; }
+      var prime = dec!==null ? dec*pr : 0;
+      h += '<tr'+(y>cy?' class="future"':'')+'><td class="k">'+y+(y===cy?'<small>en cours</small>':'')+'</td><td>'+(dec!==null?eur(dec*f):'–')+'</td><td>'+(pr>0?eur(prime*f):'–')+'</td><td class="after">'+eur((sum+prime)*f)+'</td></tr>';
+    }
+    $('yrBody').innerHTML = h;
+    $('yrNote').textContent = 'Montants en ' + viewName() + '. ' + (Math.floor(TL.n0/12)*12 !== TL.n0 ? 'La première année ne compte que les mois depuis ' + fmtM(TL.n0) + '. ' : '') + 'Les années à venir sont une projection sans nouvelle augmentation individuelle.';
+
+    // Prochaine augmentation à demander
+    var ref = TL.ev[0];
+    TL.ev.forEach(function(e){ if(e.n-TL.n0<=iT) ref=e; });
+    var kR = ref.n-TL.n0, infl = TL.px[iT]/TL.px[kR]-1, sR = TL.smic[kR];
+    var smUp = (sNow && sR) ? sNow/sR-1 : null;
+    var need = Math.max(0, infl, smUp===null?0:smUp), futI = S.g.inflFuture/100;
+    var ahead = Math.max(0,(1+Math.max(0,infl))*(1+futI)-1, smUp===null?0:smUp);
+    var realEvo = start>0 ? (now/start)/TL.px[iT]-1 : 0;
+    var since = ref.kind==='start' ? 'ton salaire de départ ('+fmtM(ref.n)+')' : 'ta dernière augmentation ('+fmtM(ref.n)+')';
+    var p1 = function(x){ return nf1.format(Math.round(x*1000)/10); };
+    if(Math.round(need*1000)<=0){
+      $('askBig').textContent = 'Rien à rattraper';
+      $('askSub').textContent = 'Depuis '+since+', ni les prix ni le SMIC n\'ont dépassé ton salaire.';
+    } else {
+      $('askBig').textContent = '+' + p1(need) + ' %';
+      $('askSub').textContent = 'soit ' + signed(now*need*f) + ' ' + viewName() + ' par mois, pour arriver à ' + eur(now*(1+need)*f) + '. C\'est le minimum pour ne rien perdre depuis ' + since + '.';
+    }
+    function askRow(k, pct, txt){ return '<tr><td class="k">'+k+'<small>'+txt+'</small></td><td class="after">'+(pct===null?'–':(pct>0.0005?'+'+p1(pct)+' %':'0 %'))+'</td><td>'+(pct===null||pct<=0.0005?'–':signed(now*pct*f))+'</td></tr>'; }
+    $('askBody').innerHTML =
+        askRow('Suivre les prix', Math.max(0,infl), 'inflation de '+spct(infl*100)+' depuis '+fmtM(ref.n))
+      + askRow('Garder ton avance sur le SMIC', smUp===null?null:Math.max(0,smUp), smUp===null?'SMIC inconnu sur la période':'SMIC '+spct(smUp*100)+' depuis '+fmtM(ref.n))
+      + askRow('Prendre un an d\'avance', ahead, 'rattrapage + '+nf1.format(S.g.inflFuture)+' % d\'inflation supposée sur les 12 prochains mois');
+    $('askNote').innerHTML = 'Depuis ton départ : salaire <b>'+spct(evo)+'</b>, prix <b>'+spct((TL.px[iT]-1)*100)+'</b>. '
+      + (realEvo>=0 ? 'Ton pouvoir d\'achat a progressé de <b>'+spct(realEvo*100)+'</b>.' : 'Ton pouvoir d\'achat a reculé de <b>'+spct(realEvo*100)+'</b> : il faudrait <b>+'+p1(1/(1+realEvo)-1)+' %</b> pour revenir au niveau de départ.')
+      + ' Une demande au-dessus du minimum est une vraie augmentation ; en dessous, tu perds du pouvoir d\'achat.';
+
+    // Résumé ancienneté
+    var parts = S.g.senior.filter(function(s){return s.y>0&&s.p;}).slice().sort(function(a,b){return a.y-b.y;}).map(function(s){ return '+'+nf1.format(s.p)+' % à '+nf1.format(s.y)+' ans'; });
+    $('senSum').textContent = (parts.length ? 'Ancienneté : ' + parts.join(', ') + '.' : 'Aucun palier d\'ancienneté.') + ' Prime de Noël : ' + (S.g.primeOn ? nf1.format(S.g.primePct) + ' % du salaire de décembre.' : 'aucune.');
+
+    drawChart();
+  }
+
+  function niceStep(raw){ var p = Math.pow(10, Math.floor(Math.log(raw)/Math.LN10)), c=[1,2,2.5,5,10]; for(var i=0;i<c.length;i++) if(c[i]*p>=raw) return c[i]*p; return 10*p; }
+
+  function drawChart(){
+    var el = $('chart'); if(!TL || !el.clientWidth) return;
+    var W = Math.max(280, el.clientWidth), H = W<520 ? 250 : 320, pad = {l:48,r:10,t:12,b:26};
+    var f = fac(S.t.view), N = TL.brut.length, iT = TL.iT, i;
+    var sal = TL.brut.map(function(v){return v*f;}), smic = TL.smic.map(function(v){return v===null?null:v*f;});
+    var inf = TL.px.map(function(v){return TL.brut[0]*v*f;});
+    var mn = Infinity, mx = -Infinity;
+    for(i=0;i<N;i++){ mn=Math.min(mn,sal[i],inf[i]); mx=Math.max(mx,sal[i],inf[i]); if(smic[i]!==null){ mn=Math.min(mn,smic[i]); mx=Math.max(mx,smic[i]); } }
+    (TL.pays||[]).forEach(function(p){ var k=p.n-TL.n0; if(k>=0&&k<N){ mn=Math.min(mn,p.v*f); mx=Math.max(mx,p.v*f); } });
+    if(!isFinite(mn)){ mn=0; mx=1; } if(mx-mn<1){ mx=mn+100; }
+    var step = niceStep((mx-mn)/4), lo = Math.floor(mn/step)*step, hi = Math.ceil(mx/step)*step;
+    var X = function(i){ return pad.l + i/N*(W-pad.l-pad.r); };
+    var Y = function(v){ return pad.t + (1-(v-lo)/(hi-lo))*(H-pad.t-pad.b); };
+    function steps(arr, a, b){ // ligne en escalier des mois a..b inclus
+      while(a<=b && arr[a]===null) a++;
+      if(a>b) return '';
+      var d = 'M'+X(a).toFixed(1)+' '+Y(arr[a]).toFixed(1);
+      for(var k=a+1;k<=b;k++){ d += 'H'+X(k).toFixed(1); if(arr[k]!==arr[k-1]) d += 'V'+Y(arr[k]).toFixed(1); }
+      return d + 'H'+X(b+1).toFixed(1);
+    }
+    var s = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+    for(var v=lo; v<=hi+step/2; v+=step){
+      s += '<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'" stroke="var(--line)" stroke-width="1"/>';
+      s += '<text x="'+(pad.l-6)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end">'+nf0.format(v)+'</text>';
+    }
+    var y0 = Math.ceil(TL.n0/12), y1 = Math.floor(TL.n1/12), ys = Math.max(1, Math.ceil((y1-y0+1)/Math.max(2,Math.floor((W-pad.l)/52))));
+    for(var y=y0;y<=y1;y+=ys){
+      var xi = X(y*12-TL.n0);
+      s += '<line x1="'+xi.toFixed(1)+'" x2="'+xi.toFixed(1)+'" y1="'+(H-pad.b)+'" y2="'+(H-pad.b+4)+'" stroke="var(--line)"/>';
+      s += '<text x="'+xi.toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(xi>W-30?'end':(xi<pad.l+14?'start':'middle'))+'">'+y+'</text>';
+    }
+    var pastSal = steps(sal,0,iT);
+    if(pastSal) s += '<path d="'+pastSal+'V'+(H-pad.b)+'H'+X(0).toFixed(1)+'Z" fill="var(--accent)" opacity=".1"/>';
+    function curve(arr,a,b){ var d=''; for(var k=a;k<=b;k++) d += (k===a?'M':'L')+X(k+0.5).toFixed(1)+' '+Y(arr[k]).toFixed(1); return d; }
+    s += '<path d="'+curve(inf,0,iT)+'" fill="none" stroke="var(--tax)" stroke-width="2" stroke-linejoin="round"/>';
+    if(iT<N-1) s += '<path d="'+curve(inf,iT,N-1)+'" fill="none" stroke="var(--tax)" stroke-width="2" stroke-dasharray="3 5" opacity=".8"/>';
+    s += '<path d="'+steps(smic,0,iT)+'" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round"/>';
+    if(iT<N-1){
+      s += '<path d="'+steps(smic,iT+1,N-1)+'" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="3 5" opacity=".7"/>';
+      s += '<path d="M'+X(iT+1).toFixed(1)+' '+Y(sal[iT]).toFixed(1)+'V'+Y(sal[iT+1]).toFixed(1)+steps(sal,iT+1,N-1).replace(/^M[^HV]*/,'')+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" stroke-linejoin="round"/>';
+    }
+    s += '<path d="'+pastSal+'" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>';
+    if(NOW_N>=TL.n0 && NOW_N<=TL.n1 && iT<N-1){
+      var xt = X(iT+0.5);
+      s += '<line x1="'+xt.toFixed(1)+'" x2="'+xt.toFixed(1)+'" y1="'+pad.t+'" y2="'+(H-pad.b)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity=".5"/>';
+      s += '<text x="'+(xt+5).toFixed(1)+'" y="'+(H-pad.b-6)+'" style="fill:var(--ink);font-weight:600">Aujourd\'hui</text>';
+    }
+    TL.ev.forEach(function(e){
+      if(e.kind==='start') return;
+      var fut = e.n-TL.n0>iT, col = e.kind==='ind' ? 'var(--accent)' : 'var(--senior)';
+      s += '<circle cx="'+X(e.n-TL.n0).toFixed(1)+'" cy="'+Y(e.after*f).toFixed(1)+'" r="4.5" fill="'+(fut?'var(--surface)':col)+'" stroke="'+col+'" stroke-width="2"/>';
+    });
+    (TL.pays||[]).forEach(function(p){
+      var k=p.n-TL.n0; if(k<0||k>=N) return;
+      var cx=X(k+0.5), cy=Y(p.v*f);
+      s += '<rect x="'+(cx-4.5).toFixed(1)+'" y="'+(cy-4.5).toFixed(1)+'" width="9" height="9" transform="rotate(45 '+cx.toFixed(1)+' '+cy.toFixed(1)+')" fill="var(--ink)" stroke="var(--surface)" stroke-width="1.5"/>';
+    });
+    s += '<line id="cur" x1="0" x2="0" y1="'+pad.t+'" y2="'+(H-pad.b)+'" stroke="var(--ink)" stroke-width="1" opacity="0"/></svg>';
+    el.innerHTML = s;
+    CH = {X:X, N:N, sal:sal, smic:smic, inf:inf, pad:pad, W:W};
+    readout(iT, false);
+  }
+  function readout(i, showCur){
+    if(!CH) return;
+    i = clamp(i,0,CH.N-1);
+    var sv = CH.sal[i], sm = CH.smic[i], fut = i>TL.iT;
+    $('readout').innerHTML = '<b>'+fmtM(TL.n0+i)+'</b>'+(fut?' (projection)':'')+' · salaire <b>'+eur(sv)+'</b>'+(sm!==null?' · SMIC <b>'+eur(sm)+'</b> · <b>'+nf2.format(sv/sm)+' ×</b> le SMIC':'')+' · départ indexé sur les prix <b>'+eur(CH.inf[i])+'</b><br>Montants mensuels en '+viewName()+'. Touche la courbe pour lire un autre mois.';
+    var c = document.getElementById('cur');
+    if(c){ var x = CH.X(i+0.5); c.setAttribute('x1',x); c.setAttribute('x2',x); c.setAttribute('opacity', showCur?'.35':'0'); }
+  }
+  function chartPoint(e){
+    if(!CH) return;
+    var r = $('chart').getBoundingClientRect(), x = (e.clientX-r.left)/r.width*CH.W;
+    readout(Math.floor((x-CH.pad.l)/(CH.W-CH.pad.l-CH.pad.r)*CH.N), true);
+  }
+
+  // ---------- Listes éditables ----------
+  function buildRaises(){
+    var h='';
+    S.t.raises.forEach(function(r,i){
+      h += '<div class="erow" data-i="'+i+'">'
+        + '<div class="inp xs"><input type="month" data-f="d" value="'+esc(r.d)+'" placeholder="AAAA-MM" aria-label="Mois de l\'augmentation"></div>'
+        + '<div class="inp xs"><input type="text" inputmode="decimal" data-f="v" value="'+fmtIn(r.v)+'" autocomplete="off" aria-label="Montant de l\'augmentation"><select data-f="type" aria-label="Unité"><option value="pct"'+(r.type!=='eur'?' selected':'')+'>%</option><option value="eur"'+(r.type==='eur'?' selected':'')+'>€ brut</option></select></div>'
+        + '<button type="button" class="del" data-del aria-label="Supprimer cette augmentation">×</button>'
+        + '<div class="inp xs note"><input type="text" data-f="note" value="'+esc(r.note)+'" placeholder="Note (facultatif) : objectifs atteints, promotion…" aria-label="Note"></div></div>';
+    });
+    $('raises').innerHTML = h || '<p class="hint">Aucune augmentation individuelle pour l\'instant.</p>';
+  }
+  function buildSenior(){
+    var h='';
+    S.g.senior.forEach(function(s,i){
+      h += '<div class="erow" data-i="'+i+'"><div class="inp xs"><span style="padding:0 6px 0 0">à</span><input type="text" inputmode="decimal" data-f="y" value="'+fmtIn(s.y)+'" autocomplete="off" aria-label="Années d\'ancienneté"><span>ans</span></div>'
+        + '<div class="inp xs"><span style="padding:0 6px 0 0">+</span><input type="text" inputmode="decimal" data-f="p" value="'+fmtIn(s.p)+'" autocomplete="off" aria-label="Pourcentage"><span>%</span></div>'
+        + '<button type="button" class="del" data-del aria-label="Supprimer ce palier">×</button></div>';
+    });
+    $('senList').innerHTML = h || '<p class="hint">Aucun palier.</p>';
+  }
+  function buildSmic(){
+    var h='';
+    S.g.smic.forEach(function(s,i){
+      h += '<div class="erow" data-i="'+i+'"><div class="inp xs"><input type="month" data-f="d" value="'+esc(s.d)+'" placeholder="AAAA-MM" aria-label="Mois d\'effet"></div>'
+        + '<div class="inp xs"><input type="text" inputmode="decimal" data-f="v" value="'+fmtIn(s.v)+'" autocomplete="off" aria-label="SMIC brut mensuel"><span>€</span></div>'
+        + '<button type="button" class="del" data-del aria-label="Supprimer cette ligne">×</button></div>';
+    });
+    $('smicList').innerHTML = h;
+  }
+  function buildInfl(){
+    var h='';
+    S.g.infl.forEach(function(r,i){
+      h += '<div class="erow" data-i="'+i+'"><div class="inp xs"><input type="text" inputmode="numeric" data-f="y" value="'+esc(Math.round(r.y))+'" autocomplete="off" aria-label="Année"></div>'
+        + '<div class="inp xs"><input type="text" inputmode="decimal" data-f="p" value="'+fmtIn(r.p)+'" autocomplete="off" aria-label="Inflation en pourcentage"><span>%</span></div>'
+        + '<button type="button" class="del" data-del aria-label="Supprimer cette année">×</button></div>';
+    });
+    $('inflList').innerHTML = h;
+  }
+  function buildPays(){
+    var h='';
+    S.g.pays.forEach(function(p,i){
+      h += '<div class="erow" data-i="'+i+'"><div class="inp xs"><input type="month" data-f="d" value="'+esc(p.d)+'" placeholder="AAAA-MM" aria-label="Mois de la fiche de paie"></div>'
+        + '<div class="inp xs"><input type="text" inputmode="decimal" data-f="v" value="'+fmtIn4(p.v)+'" autocomplete="off" aria-label="Taux horaire ou salaire de base brut"><select data-f="u" aria-label="Unité"><option value="h"'+(p.u==='h'?' selected':'')+'>€/h</option><option value="m"'+(p.u!=='h'?' selected':'')+'>€/mois</option></select></div>'
+        + '<button type="button" class="del" data-del aria-label="Supprimer cette fiche">×</button><span class="hint num eq" id="payEq'+i+'"></span></div>';
+    });
+    $('payList').innerHTML = h || '<p class="hint">Aucune fiche saisie pour l\'instant.</p>';
+  }
+  function renderSet(){
+    setSeg('segSenMode', S.g.seniorMode); setSeg('segPrime', S.g.primeOn?1:0);
+    setVal('primePct', fmtIn(S.g.primePct)); setVal('inflFuture', fmtIn(S.g.inflFuture));
+    $('senModeHint').textContent = S.g.seniorMode==='base'
+      ? 'Les pourcentages s\'additionnent et forment une prime calculée sur le salaire de base (hors ancienneté).'
+      : 'Chaque palier augmente le salaire du moment : les pourcentages se cumulent les uns sur les autres.';
+    var tot=0, comp=1; S.g.senior.forEach(function(s){ if(s.y>0){ tot+=s.p; comp*=1+s.p/100; } });
+    $('senTotal').textContent = 'Total en fin de grille : ' + spct(S.g.seniorMode==='base' ? tot : (comp-1)*100);
+    var dec = TL ? TL.brut[Math.min(TL.brut.length-1, Math.max(0, NOW.getFullYear()*12+11-TL.n0))] : 0;
+    $('primeEq').textContent = S.g.primeOn && dec ? 'soit environ ' + eur(dec*S.g.primePct/100) + ' brut en décembre ' + NOW.getFullYear() + ' d\'après l\'onglet « Dans le temps »' : '';
+  }
+
+  function renderOut(){ renderSim(); renderEvo(); renderSet(); }
+  function renderAll(){ buildRaises(); buildSenior(); buildSmic(); buildPays(); buildInfl(); renderOut(); }
+
+  // ---------- Sauvegarde ----------
+  function persist(){
+    S.updatedAt = Date.now(); hadLocal = true;
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+  }
+  function changed(){ persist(); renderOut(); }
+  function touchT(){ S.t.example = false; }
+
+  // ---------- Événements ----------
+  function onInput(id, fn){
+    $(id).addEventListener('input', function(){ fn(parse(this.value), this.value); changed(); });
+    $(id).addEventListener('blur', function(){ renderOut(); });
+  }
+  function onSeg(id, fn){
+    $(id).addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; fn(b.dataset.v); changed(); });
+  }
+  function onList(id, arr, build, after){
+    $(id).addEventListener('input', function(e){
+      var row = e.target.closest('[data-i]'), f = e.target.dataset.f; if(!row||!f) return;
+      var o = arr()[+row.dataset.i]; if(!o) return;
+      o[f] = (f==='d'||f==='note'||f==='type'||f==='u') ? e.target.value : parse(e.target.value);
+      if(after) after(); changed();
+    });
+    $(id).addEventListener('change', function(e){ if(e.target.tagName==='SELECT'){ var row=e.target.closest('[data-i]'); var o=arr()[+row.dataset.i]; if(o){ o[e.target.dataset.f||'type']=e.target.value; if(after) after(); changed(); } } });
+    $(id).addEventListener('click', function(e){
+      if(!e.target.closest('[data-del]')) return;
+      var row = e.target.closest('[data-i]'); arr().splice(+row.dataset.i,1); build(); if(after) after(); changed();
+    });
+  }
+
+  buildScenarios();
+  onInput('valM', function(v){ S.val = Math.max(0,v); });
+  onInput('valA', function(v){ S.val = Math.max(0,v)/S.mois; });
+  onInput('aug', function(v){ S.aug = v; });
+  onInput('augR', function(v){ S.aug = S.augMode==='eur' ? Math.round(brutM()*v)/100 : v; });
+  onInput('charges', function(v){ var b=brutM(); S.charges = clamp(v,0,60); S.statut='custom'; if(S.base==='brut') S.val=b; });
+  onInput('tax', function(v){ S.tax = clamp(v,0,60); });
+  onInput('taxR', function(v){ S.tax = v; });
+  onInput('quot', function(v){ S.quot = clamp(v,0,100); });
+  onSeg('segBase', function(v){ if(v===S.base) return; var b = brutM(); S.base = v; S.val = Math.round(b*fac(v)*100)/100; });
+  onSeg('segMois', function(v){ S.mois = +v; });
+  onSeg('segAug', function(v){
+    if(v===S.augMode) return; var b = brutM();
+    S.aug = v==='eur' ? Math.round(b*S.aug)/100 : (b>0 ? Math.round(S.aug/b*10000)/100 : 0);
+    S.augMode = v;
+  });
+  onSeg('segStatut', function(v){ S.statut = v; if(RATES[v]!==undefined) S.charges = RATES[v]; else $('charges').focus(); });
+  onSeg('segQuot', function(v){ S.quot = +v; });
+  onSeg('segPer', function(v){ S.per = v; });
+  $('reset').addEventListener('click', function(){ var d=defaults(), keep={t:S.t,g:S.g}; S=d; S.t=keep.t; S.g=keep.g; changed(); });
+
+  onInput('tStartVal', function(v){ S.t.startVal = Math.max(0,v); touchT(); });
+  onInput('tStart', function(v,raw){ S.t.start = raw; touchT(); });
+  onInput('tEntry', function(v,raw){ S.t.entry = raw; touchT(); });
+  onInput('tEnd', function(v){ if(v>=1950 && v<=2100) S.t.end = Math.round(v); touchT(); });
+  onSeg('segTBase', function(v){ if(v===S.t.startBase) return; var b = startBrut(); S.t.startBase=v; S.t.startVal = v==='net' ? Math.round(b*fac('net')*100)/100 : (v==='heure' ? Math.round(b/hours()*1000)/1000 : Math.round(b*100)/100); touchT(); });
+  onSeg('segMode', function(v){ S.t.mode = v; touchT(); });
+  onInput('hours', function(v){ if(v>0 && v<400) S.g.hours = v; });
+  onSeg('segView', function(v){ S.t.view = v; });
+  onList('raises', function(){return S.t.raises;}, buildRaises, touchT);
+  $('addRaise').addEventListener('click', function(){
+    var y=NOW.getFullYear(), m=NOW.getMonth()+1;
+    S.t.raises.push({d:y+'-'+(m<10?'0':'')+m, type:'pct', v:2, note:''}); touchT(); buildRaises(); changed();
+    var ins = $('raises').querySelectorAll('.erow'); if(ins.length) ins[ins.length-1].querySelector('input').focus();
+  });
+
+  onList('senList', function(){return S.g.senior;}, buildSenior);
+  $('addSen').addEventListener('click', function(){ var mx=0; S.g.senior.forEach(function(s){mx=Math.max(mx,s.y);}); S.g.senior.push({y:mx+2,p:2}); buildSenior(); changed(); });
+  onSeg('segSenMode', function(v){ S.g.seniorMode = v; });
+  onSeg('segPrime', function(v){ S.g.primeOn = v==='1'; });
+  onInput('primePct', function(v){ S.g.primePct = clamp(v,0,500); });
+  onList('smicList', function(){return S.g.smic;}, buildSmic);
+  $('addSmic').addEventListener('click', function(){
+    var y=NOW.getFullYear(), m=NOW.getMonth()+1, lastV = S.g.smic.length ? S.g.smic[S.g.smic.length-1].v : 0;
+    S.g.smic.push({d:y+'-'+(m<10?'0':'')+m, v:lastV}); buildSmic(); changed();
+    var l=$('smicList'); l.scrollTop = l.scrollHeight;
+  });
+  onList('payList', function(){return S.g.pays;}, buildPays);
+  $('addPay').addEventListener('click', function(){
+    var y=NOW.getFullYear(), m=NOW.getMonth()+1, c = TL ? TL.brut[TL.iT] : 0;
+    S.g.pays.push({d:y+'-'+(m<10?'0':'')+m, v:Math.round(c/hours()*1000)/1000, u:'h'}); buildPays(); changed();
+    var ins = $('payList').querySelectorAll('.erow'); if(ins.length) ins[ins.length-1].querySelector('input').focus();
+  });
+  onList('inflList', function(){return S.g.infl;}, buildInfl);
+  $('addInfl').addEventListener('click', function(){
+    var mx=0; S.g.infl.forEach(function(r){mx=Math.max(mx,Math.round(r.y));});
+    S.g.infl.push({y:(mx||NOW.getFullYear()-1)+1, p:S.g.inflFuture}); buildInfl(); changed();
+    var l=$('inflList'); l.scrollTop = l.scrollHeight;
+  });
+  $('resetInfl').addEventListener('click', function(){ S.g.infl = inflDef(); buildInfl(); changed(); });
+  onInput('inflFuture', function(v){ S.g.inflFuture = clamp(v,-5,30); });
+  $('resetSmic').addEventListener('click', function(){ S.g.smic = smicDef(); buildSmic(); changed(); });
+  $('resetAll').addEventListener('click', function(){ S = defaults(); renderAll(); persist(); });
+
+  $('copyData').addEventListener('click', function(){
+    var txt = JSON.stringify(S), btn=this;
+    function fallback(){ $('restoreBox').hidden=false; $('restoreTxt').value=txt; $('restoreTxt').select(); $('restoreMsg').textContent='Copie le texte ci-dessus et garde-le dans une note.'; }
+    try{ navigator.clipboard.writeText(txt).then(function(){ btn.textContent='Copié'; setTimeout(function(){btn.textContent='Copier mes données';},1800); }, fallback); }catch(e){ fallback(); }
+  });
+  $('showRestore').addEventListener('click', function(){ $('restoreBox').hidden = !$('restoreBox').hidden; });
+  $('doRestore').addEventListener('click', function(){
+    try{ var o = JSON.parse($('restoreTxt').value); if(!o || typeof o!=='object' || (!o.t && !o.g && o.val===undefined)) throw 0; adopt(o); renderAll(); persist(); $('restoreMsg').textContent='Données restaurées.'; }
+    catch(e){ $('restoreMsg').textContent='Ce texte n\'est pas une copie valide. Colle le texte complet obtenu avec « Copier mes données ».'; }
+  });
+
+  var ch = $('chart');
+  ch.addEventListener('pointerdown', chartPoint); ch.addEventListener('pointermove', chartPoint);
+  ch.addEventListener('pointerleave', function(){ if(TL) readout(TL.iT,false); });
+  var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(drawChart,120); });
+
+  // ---------- Onglets ----------
+  var TABS = ['simulateur','evolution','reglages'];
+  function show(t){
+    TABS.forEach(function(k){ $('p-'+k).hidden = k!==t; });
+    var bs = document.querySelectorAll('.tabs button');
+    for(var i=0;i<bs.length;i++) bs[i].setAttribute('aria-selected', String(bs[i].dataset.tab===t));
+    if(t==='evolution') drawChart();
+  }
+  function route(){
+    var t = (location.hash||'').replace('#',''); if(TABS.indexOf(t)<0) t='simulateur';
+    show(t);
+  }
+  function go(t){ show(t); try{ if(location.hash!=='#'+t) location.hash = t; }catch(e){} window.scrollTo(0,0); }
+  document.querySelector('.tabs').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) go(b.dataset.tab); });
+  document.addEventListener('click', function(e){ var b=e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
+  window.addEventListener('hashchange', route);
+
+  renderAll();
+  route();
+  if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+})();
+</script>
+</body>
+</html>
