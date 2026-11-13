@@ -254,6 +254,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
                   <div class="inp"><input id="valA" type="text" inputmode="decimal" autocomplete="off"><span>€ / an</span></div></div>
               </div>
               <span class="hint num" id="baseEq"></span>
+              <button type="button" class="btn" id="useTL"></button>
               <div class="seg" id="segMois" role="group" aria-label="Nombre de mois payés">
                 <button type="button" data-v="12">Sur 12 mois</button>
                 <button type="button" data-v="13">Sur 13 mois</button>
@@ -273,7 +274,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
             </div>
 
             <div class="field">
-              <span class="lbl">Statut <span class="hint">fixe le taux de cotisations</span></span>
+              <span class="lbl">Cotisations salariales <span class="hint">choisis un statut ou saisis ton taux</span></span>
               <div class="seg" id="segStatut" role="group" aria-label="Statut">
                 <button type="button" data-v="noncadre">Non-cadre</button>
                 <button type="button" data-v="cadre">Cadre</button>
@@ -388,7 +389,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
           <h2>Mon point de départ</h2>
           <div class="fields">
             <div class="field">
-              <span class="lbl">Salaire de départ</span>
+              <span class="lbl">Salaire de départ <span class="hint" id="tStartL"></span></span>
               <div class="row">
                 <div class="inp" style="flex:2 1 150px"><input id="tStartVal" type="text" inputmode="decimal" autocomplete="off" aria-label="Salaire de départ"><span id="tStartUnit">€ / mois</span></div>
                 <div class="seg" id="segTBase" role="group" aria-label="Brut ou net" style="flex:1 1 120px">
@@ -457,6 +458,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
               <button type="button" data-v="reel">Net après impôt</button>
             </div>
           </div>
+          <p class="hint num" style="margin:-4px 0 12px"><span id="viewNote"></span> <button type="button" class="link" data-go="simulateur" style="padding:0">Modifier ces taux</button></p>
           <div class="tiles num">
             <div class="tile main"><small>Salaire aujourd'hui</small><strong id="kNow">–</strong><span id="kNowS"></span></div>
             <div class="tile"><small>Depuis le départ</small><strong id="kEvo">–</strong><span id="kEvoS"></span></div>
@@ -594,7 +596,8 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
               <li>Les paliers d'ancienneté tombent au mois anniversaire de l'entrée dans l'entreprise.</li>
               <li>Un taux horaire est converti en salaire mensuel avec les heures du contrat (151,67 h pour 35 h par semaine).</li>
               <li>Si la courbe suit tes augmentations saisies, les fiches de paie ne la modifient pas : elles apparaissent en losanges et servent à repérer une augmentation oubliée.</li>
-              <li>Si la courbe suit tes fiches de paie, chaque hausse constatée est datée du mois de la fiche. La part correspondant aux paliers d'ancienneté franchis entre deux fiches est comptée en ancienneté, le reste en « autre hausse » (individuelle ou générale).</li>
+              <li>Si la courbe suit tes fiches de paie et que l'ancienneté est réglée en prime sur le salaire de base, tes fiches sont lues comme un salaire de base hors ancienneté et la prime d'ancienneté est ajoutée par-dessus.</li>
+              <li>Si la courbe suit tes fiches de paie avec l'autre mode d'ancienneté, chaque hausse constatée est datée du mois de la fiche. La part correspondant aux paliers d'ancienneté franchis entre deux fiches est comptée en ancienneté, le reste en « autre hausse » (individuelle ou générale).</li>
               <li>La courbe d'inflation montre ce que vaudrait ton salaire de départ s'il avait seulement suivi les prix. La hausse de chaque année est répartie également sur ses douze mois, ce qui est une approximation.</li>
               <li>L'augmentation à demander part de ta dernière augmentation, quelle qu'elle soit (individuelle ou ancienneté), et prend le plus élevé des deux : la hausse des prix ou celle du SMIC depuis cette date.</li>
               <li>La prime de Noël s'ajoute au total de l'année, calculée sur le salaire de décembre.</li>
@@ -716,8 +719,29 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
       S.g.pays.forEach(function(p){ var k=toN(p.d), v=payBrut(p); if(k===null||!(v>0)||k<n0||k>n1) return; payAt[k]=v; lastPay=Math.max(lastPay,k); });
       if(lastPay<0) fich=false; else if(payAt[n0]) base=payAt[n0];
     }
-    ev.push({n:n0, kind:'start', label:'', after:base});
+    var fichBase = fich && S.g.seniorMode==='base', senAt = {};
+    if(fichBase){
+      S.g.senior.forEach(function(s){ if(!(s.y>0)||!s.p) return; var k=entry+Math.round(s.y*12); if(k<=n0) senPct+=s.p; else if(k<=n1){ (senAt[k]=senAt[k]||[]).push(s); } });
+    }
+    ev.push({n:n0, kind:'start', label:'', after:base*(1+senPct/100)});
     for(var n=n0;n<=n1;n++){
+      if(fichBase){
+        // Les fiches donnent le salaire de base hors ancienneté : la prime s'ajoute par-dessus.
+        if(n>n0 && payAt[n] && Math.abs(payAt[n]-base) > Math.max(0.5, base*0.001)){
+          var b0 = base*(1+senPct/100), up = payAt[n]>base; var pc = (payAt[n]/base-1)*100; base = payAt[n];
+          ev.push({n:n, kind:'ind', tag:(up?'Hausse du taux':'Baisse du taux'), label:spct(pc), note:'individuelle ou générale, lue sur la fiche de paie', before:b0, after:base*(1+senPct/100)});
+        }
+        if(n>lastPay && byMonth[n]) byMonth[n].forEach(function(e){
+          if(e.kind!=='ind') return;
+          var b1 = base*(1+senPct/100), lb;
+          if(e.r.type==='eur'){ base += e.r.v; lb = signed(e.r.v)+' brut'; } else { base *= 1+e.r.v/100; lb = spct(e.r.v); }
+          ev.push({n:n, kind:'ind', label:lb, note:e.r.note||'', before:b1, after:base*(1+senPct/100)});
+        });
+        if(senAt[n]) senAt[n].forEach(function(st){
+          var b2 = base*(1+senPct/100); senPct += st.p;
+          ev.push({n:n, kind:'sen', label:'+'+nf1.format(st.p)+' pt', note:nf1.format(st.y)+' ans d\'ancienneté, prime portée à '+nf1.format(senPct)+' % du salaire de base', before:b2, after:base*(1+senPct/100)});
+        });
+      } else {
       var list = (fich && n<=lastPay) ? null : byMonth[n];
       if(fich && n>n0 && payAt[n]){
         var cur = base, tgt = payAt[n], F = 1, yrs = [];
@@ -748,11 +772,12 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
           ev.push({n:n, kind:e.kind, label:label, note:e.kind==='ind'?(e.r.note||''):(nf1.format(e.s.y)+' ans d\'ancienneté'), before:before, after:after});
         }
       }
+      }
       brut.push(base*(1+senPct/100));
       smic.push(smicAt(n));
       px.push(n===n0 ? 1 : px[px.length-1]*Math.pow(1+rate(Math.floor(n/12))/100, 1/12));
     }
-    return {fich:fich, lastPay:lastPay, n0:n0, n1:n1, entry:entry, brut:brut, smic:smic, px:px, ev:ev, iT:clamp(NOW_N-n0,0,n1-n0)};
+    return {fich:fich, fichBase:fichBase, senNow:senPct, lastPay:lastPay, n0:n0, n1:n1, entry:entry, brut:brut, smic:smic, px:px, ev:ev, iT:clamp(NOW_N-n0,0,n1-n0)};
   }
 
   // ---------- Rendu ----------
@@ -834,18 +859,23 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     var f = fac(S.t.view), iT = TL.iT, last = TL.brut.length-1, i;
     $('exBanner').hidden = !S.t.example;
     setVal('tStartVal', fmtIn4(S.t.startVal)); setVal('hours', fmtIn4(hours())); setSeg('segMode', S.t.mode);
+    $('tStartL').textContent = TL.fichBase ? 'hors ancienneté' : '';
     $('tStartUnit').textContent = S.t.startBase==='heure' ? '€ / heure' : '€ / mois';
     $('tStartEq').textContent = S.t.startBase==='brut' ? '' : 'soit ' + eur(startBrut()) + ' brut par mois';
     $('modeHint').textContent = S.t.mode!=='fiches' ? 'La courbe est calculée avec ton salaire de départ, tes augmentations individuelles et l\'ancienneté. Les fiches servent de contrôle.'
-      : (TL.fich ? 'La courbe passe par tes fiches de paie. Chaque hausse est datée du mois de la fiche où elle apparaît, et la part d\'ancienneté attendue est séparée du reste.' : 'Ajoute au moins une fiche de paie postérieure à la date de départ pour que la courbe la suive.');
+      : (TL.fichBase ? 'Tes fiches donnent le salaire de base hors ancienneté : l\'outil ajoute la prime d\'ancienneté par-dessus, aux dates anniversaires. Si l\'ancienneté est déjà comprise dans ton taux, change le mode d\'ancienneté dans Réglages.'
+      : TL.fich ? 'Le montant de chaque fiche est pris comme le salaire complet, ancienneté comprise : l\'outil n\'ajoute rien par-dessus. Si ta prime d\'ancienneté est sur une ligne à part, choisis « Prime en % du salaire de base » dans Réglages.' : 'Ajoute au moins une fiche de paie postérieure à la date de départ pour que la courbe la suive.');
     $('raisesHint').textContent = TL.fich ? 'En mode fiches de paie, seules les augmentations datées après ta dernière fiche ('+fmtM(TL.lastPay)+') sont prises en compte.' : 'Celles obtenues avec ton responsable (objectifs, promotion, négociation).';
     $('kIndL').textContent = TL.fich ? 'Gagné hors ancienneté' : 'Gagné en individuel';
     $('payCard').hidden = TL.fich;
-    S.g.pays.forEach(function(p,i){ var e = document.getElementById('payEq'+i); if(e) e.textContent = p.v>0 ? (p.u==='h' ? '= ' + eur(payBrut(p)) + ' brut par mois' : '= ' + nf4.format(Math.round(p.v/hours()*1000)/1000) + ' € de l\'heure') : ''; }); setVal('tStart', S.t.start); setVal('tEntry', S.t.entry); setVal('tEnd', String(S.t.end));
+    S.g.pays.forEach(function(p,i){ var e = document.getElementById('payEq'+i); if(e) e.textContent = p.v>0 ? (p.u==='h' ? '= ' + eur(payBrut(p)) + ' brut par mois' + (TL.fichBase ? ' hors ancienneté' : '') : '= ' + nf4.format(Math.round(p.v/hours()*1000)/1000) + ' € de l\'heure') : ''; }); setVal('tStart', S.t.start); setVal('tEntry', S.t.entry); setVal('tEnd', String(S.t.end));
     setSeg('segTBase', S.t.startBase); setSeg('segView', S.t.view);
 
     var now = TL.brut[iT], start = TL.brut[0], sNow = TL.smic[iT], sStart = TL.smic[0];
     $('kNow').textContent = eur(now*f);
+    $('viewNote').textContent = 'Net calculé avec ' + nf2.format(S.charges) + ' % de cotisations et ' + nf2.format(S.tax) + ' % d\'impôt, réglés dans le Simulateur.';
+    $('useTL').textContent = 'Reprendre mon salaire d\'aujourd\'hui de « Dans le temps » : ' + eur(now) + ' brut';
+    $('useTL').hidden = Math.abs(brutM()-now) < 0.5;
     $('kNowS').textContent = viewName() + (sNow ? ' · ' + nf2.format(now/sNow) + ' × le SMIC' : '');
     var evo = start>0 ? (now/start-1)*100 : 0;
     $('kEvo').textContent = spct(evo);
@@ -1119,6 +1149,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   onSeg('segStatut', function(v){ S.statut = v; if(RATES[v]!==undefined) S.charges = RATES[v]; else $('charges').focus(); });
   onSeg('segQuot', function(v){ S.quot = +v; });
   onSeg('segPer', function(v){ S.per = v; });
+  $('useTL').addEventListener('click', function(){ if(!TL) return; S.base='brut'; S.val=Math.round(TL.brut[TL.iT]*100)/100; changed(); });
   $('reset').addEventListener('click', function(){ var d=defaults(), keep={t:S.t,g:S.g}; S=d; S.t=keep.t; S.g=keep.g; changed(); });
 
   onInput('tStartVal', function(v){ S.t.startVal = Math.max(0,v); touchT(); });
