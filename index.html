@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Calculateur d'augmentation de salaire</title>
 <meta name="description" content="Simuler une augmentation de salaire et suivre son évolution face au SMIC et à l'inflation. Les données restent sur l'appareil.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -170,6 +170,66 @@ details ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;
 .del{flex:0 0 40px !important;width:40px;height:40px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:10px;font-size:1.2rem;line-height:1}
 .del:hover{background:var(--tax-soft);color:var(--tax)}
 
+/* Navigation : barre en bas sur téléphone, menu latéral sur grand écran */
+body{padding-top:env(safe-area-inset-top);padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.nav button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:transparent;color:var(--muted);font:600 .66rem var(--font-body);padding:6px 2px;border-radius:10px;cursor:pointer}
+.nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav button svg{width:22px;height:22px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
+.navt{display:none}
+@media (min-width:1000px){
+  body{padding-left:214px;padding-bottom:0}
+  .nav{right:auto;top:0;width:214px;flex-direction:column;gap:4px;padding:22px 12px;border-top:0;border-right:1px solid var(--line);background:var(--surface);overflow:auto}
+  .nav button{flex:0 0 auto;flex-direction:row;gap:11px;font-size:.93rem;padding:10px 12px;justify-content:flex-start}
+  .navt{display:block;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px}
+  .navt:first-child{padding-top:0}
+}
+/* Budget */
+.bhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.bt{font-family:var(--font-display);font-weight:800;font-size:1.5rem;letter-spacing:-.01em;margin:0}
+.mnav{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px}
+.mnav button{border:0;background:transparent;color:var(--ink);font-size:1.3rem;line-height:1;width:38px;height:38px;border-radius:10px;cursor:pointer}
+.mnav button:hover{background:var(--surface-2)}
+.mnav b{min-width:136px;text-align:center;font-weight:600}
+.mnav b::first-letter{text-transform:uppercase}
+.fi{height:40px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-2);color:var(--ink);font:500 .92rem var(--font-body);padding:0 10px;min-width:0;width:100%}
+.fi:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+input[type=color].fi{padding:3px;width:46px;flex:0 0 46px;cursor:pointer}
+.erow > .fi{width:auto}
+.bform{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:10px}
+.bform label{display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:600;color:var(--muted);min-width:0}
+.ck{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.88rem;margin:8px 0}
+.ck input[type=checkbox],.brow input[type=checkbox]{width:21px;height:21px;flex:0 0 21px;accent-color:var(--accent);cursor:pointer}
+.tb > *{flex:1 1 150px}
+.tb > input{flex:2 1 220px}
+.brow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow .chk{width:21px;flex:0 0 21px}
+.brow .bl{flex:1;min-width:0;cursor:pointer}
+.brow .bl b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .bl small{color:var(--muted);font-size:.78rem;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:2px}
+.brow .am{font-weight:700;white-space:nowrap}
+.am.pos{color:var(--accent)}
+.brow.pend{opacity:.78}
+.brow.pend .btn{padding:6px 10px;font-size:.82rem}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border-radius:99px;padding:1px 8px;font-size:.74rem;white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%}
+.prog{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.prog i.over{background:var(--tax)}
+.crow{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.crow:last-of-type{border-bottom:0}
+.crow .top{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;flex-wrap:wrap}
+.bcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.panel > .card{margin-bottom:20px}
+.tiles.t4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.alist{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+.sw{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sw button{width:34px;height:34px;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
+.sw button[aria-pressed="true"]{box-shadow:0 0 0 2.5px var(--ink)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+@media (max-width:820px){.bcols{grid-template-columns:minmax(0,1fr)}.tiles.t4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Encart augmentation à demander */
 .ask{border:2px solid var(--accent)}
 .askgrid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:20px;align-items:center}
@@ -232,15 +292,25 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>Mon salaire, <em>en net réel</em></h1>
-    <p>Simuler une augmentation, suivre son évolution dans le temps et la comparer au SMIC.</p>
+    <h1>Mon salaire, <em>mon budget</em></h1>
+    <p>Budget du foyer, simulation d'augmentation et suivi du salaire face au SMIC et à l'inflation.</p>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" data-tab="simulateur">Simulateur</button>
-    <button type="button" role="tab" data-tab="evolution">Dans le temps</button>
-    <button type="button" role="tab" data-tab="reglages">Réglages</button>
+  <nav class="nav" role="tablist" aria-label="Sections">
+    <span class="navt">Budget</span>
+    <button type="button" role="tab" data-tab="synthese"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1 1 12 3z"/></svg><span>Synthèse</span></button>
+    <button type="button" role="tab" data-tab="operations"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Opérations</span></button>
+    <button type="button" role="tab" data-tab="previsions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v15H5zM5 10h14M9 3v4M15 3v4"/></svg><span>Prévisions</span></button>
+    <span class="navt">Salaire</span>
+    <button type="button" role="tab" data-tab="simulateur"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg><span>Simulateur</span></button>
+    <button type="button" role="tab" data-tab="evolution"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/></svg><span>Évolution</span></button>
+    <span class="navt">Application</span>
+    <button type="button" role="tab" data-tab="reglages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4"/></svg><span>Réglages</span></button>
   </nav>
+
+  <div class="panel" id="p-synthese" hidden></div>
+  <div class="panel" id="p-operations" hidden></div>
+  <div class="panel" id="p-previsions" hidden></div>
 
   <!-- ============ SIMULATEUR ============ -->
   <div class="panel" id="p-simulateur">
@@ -593,7 +663,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
             <textarea id="restoreTxt" aria-label="Données à restaurer" placeholder="Colle ici la copie de tes données"></textarea>
             <div class="row" style="margin-top:8px;align-items:center"><button type="button" class="btn primary" id="doRestore" style="flex:0 0 auto">Restaurer</button><span class="hint" id="restoreMsg"></span></div>
           </div>
-          <button type="button" class="link" id="resetAll" style="margin-top:12px">Tout remettre aux valeurs d'exemple</button>
+          <button type="button" class="link" id="resetAll" style="margin-top:12px">Remettre le salaire aux valeurs d'exemple</button>
         </section>
       </div>
 
@@ -639,6 +709,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
         </section>
       </div>
     </div>
+    <div id="bSettings"></div>
   </div>
 </div>
 
@@ -667,6 +738,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
     t:{example:true, start:'2015-01', startVal:1800, startBase:'brut', entry:'2015-01', end:NOW.getFullYear()+8, view:'brut', mode:'calc',
        raises:[{d:'2016-04',type:'pct',v:3,note:'Objectifs atteints'},{d:'2019-03',type:'eur',v:80,note:''},{d:'2022-04',type:'pct',v:4,note:'Nouvelles responsabilités'},{d:'2025-03',type:'pct',v:2.5,note:''}]},
     g:{senior:[{y:4,p:4},{y:6,p:2},{y:8,p:2},{y:10,p:2},{y:12,p:2},{y:15,p:3},{y:17,p:2},{y:20,p:2}], seniorMode:'compose', primeOn:true, primePct:50, smic:smicDef(), pays:[], infl:inflDef(), inflFuture:2, hours:151.67, senBase:100},
+    b:null, theme:{accent:'',mode:'auto'},
     updatedAt:0
   };}
   var RATES = {noncadre:22, cadre:25, 'public':15};
@@ -1192,7 +1264,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   }
 
   function renderOut(){ renderSim(); renderEvo(); renderSet(); }
-  function renderAll(){ buildRaises(); buildSenior(); buildSmic(); buildPays(); buildInfl(); renderOut(); }
+  function renderAll(){ buildRaises(); buildSenior(); buildSmic(); buildPays(); buildInfl(); renderOut(); if(window.BUDGET) window.BUDGET.init(); }
 
   // ---------- Sauvegarde ----------
   function persist(){
@@ -1244,7 +1316,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   onSeg('segQuot', function(v){ S.quot = +v; });
   onSeg('segPer', function(v){ S.per = v; });
   $('useTL').addEventListener('click', function(){ if(!TL) return; S.base='brut'; S.val=Math.round(TL.brut[TL.iT]*100)/100; changed(); });
-  $('reset').addEventListener('click', function(){ var d=defaults(), keep={t:S.t,g:S.g}; S=d; S.t=keep.t; S.g=keep.g; changed(); });
+  $('reset').addEventListener('click', function(){ var d=defaults(), keep={t:S.t,g:S.g,b:S.b,th:S.theme}; S=d; S.t=keep.t; S.g=keep.g; S.b=keep.b; S.theme=keep.th; changed(); });
 
   onInput('tStartVal', function(v){ S.t.startVal = Math.max(0,v); touchT(); });
   onInput('tStart', function(v,raw){ S.t.start = raw; touchT(); });
@@ -1289,7 +1361,7 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   $('resetInfl').addEventListener('click', function(){ S.g.infl = inflDef(); buildInfl(); changed(); });
   onInput('inflFuture', function(v){ S.g.inflFuture = clamp(v,-5,30); });
   $('resetSmic').addEventListener('click', function(){ S.g.smic = smicDef(); buildSmic(); changed(); });
-  $('resetAll').addEventListener('click', function(){ S = defaults(); renderAll(); persist(); });
+  $('resetAll').addEventListener('click', function(){ var kb=S.b, kt=S.theme; S = defaults(); S.b=kb; S.theme=kt; renderAll(); persist(); });
 
   $('copyData').addEventListener('click', function(){
     var txt = JSON.stringify(S), btn=this;
@@ -1314,26 +1386,32 @@ textarea{width:100%;min-height:90px;background:var(--surface-2);border:1.5px sol
   var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(drawChart,120); });
 
   // ---------- Onglets ----------
-  var TABS = ['simulateur','evolution','reglages'];
+  var TABS = ['synthese','operations','previsions','simulateur','evolution','reglages'], curTab = 'simulateur';
   function show(t){
     TABS.forEach(function(k){ $('p-'+k).hidden = k!==t; });
-    var bs = document.querySelectorAll('.tabs button');
+    var bs = document.querySelectorAll('.nav button');
     for(var i=0;i<bs.length;i++) bs[i].setAttribute('aria-selected', String(bs[i].dataset.tab===t));
+    curTab = t;
     if(t==='evolution') drawChart();
+    if(window.BUDGET) window.BUDGET.show(t);
   }
   function route(){
     var t = (location.hash||'').replace('#',''); if(TABS.indexOf(t)<0) t='simulateur';
     show(t);
   }
   function go(t){ show(t); try{ if(location.hash!=='#'+t) location.hash = t; }catch(e){} window.scrollTo(0,0); }
-  document.querySelector('.tabs').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) go(b.dataset.tab); });
+  document.querySelector('.nav').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) go(b.dataset.tab); });
   document.addEventListener('click', function(e){ var b=e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
   window.addEventListener('hashchange', route);
 
+  window.APP = {get S(){ return S; }, persist:persist, esc:esc, go:go, tab:function(){ return curTab; },
+    salary:function(){ if(!TL) return null; var f = fac('reel'), dec = TL.brut[Math.min(TL.brut.length-1, Math.max(0, NOW.getFullYear()*12+11-TL.n0))]; return {net:TL.brut[TL.iT]*f, prime:S.g.primeOn ? dec*S.g.primePct/100*f : 0}; },
+    restore:function(o){ adopt(o); renderAll(); persist(); }};
   renderAll();
   route();
   if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
 })();
 </script>
+<script src="budget.js"></script>
 </body>
 </html>
